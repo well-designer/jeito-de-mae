@@ -619,3 +619,106 @@ textarea.inp{
   }
 }
 
+/* =========================================================
+   CARDS - TEXTO A ESQUERDA / FOTO A DIREITA
+   ========================================================= */
+
+.card{
+  min-height:128px;
+  padding:12px;
+  gap:14px;
+  align-items:center;
+  overflow:hidden;
+}
+
+.card-body{
+  order:1;
+  padding:2px 0;
+  min-width:0;
+  align-self:stretch;
+  justify-content:center;
+}
+
+.card-photo{
+  order:2;
+  width:112px;
+  height:112px;
+  min-height:112px;
+  flex:0 0 112px;
+  border-radius:14px;
+  overflow:hidden;
+  background:var(--surface-2);
+}
+
+.card-photo img{
+  position:static;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:inherit;
+}
+
+.card-body .tag{
+  align-self:flex-start;
+  max-width:100%;
+}
+
+.card-body h3{
+  font-size:16px;
+  line-height:1.22;
+}
+
+.card-body p{
+  max-width:100%;
+  margin-bottom:8px;
+}
+
+@media (max-width:700px){
+  .card{
+    min-height:122px;
+    padding:11px 12px;
+    gap:12px;
+  }
+
+  .card-photo{
+    width:104px;
+    height:104px;
+    min-height:104px;
+    flex-basis:104px;
+    border-radius:13px;
+  }
+
+  .card-body{
+    padding:1px 0;
+  }
+
+  .card-body h3{
+    font-size:15.5px;
+    line-height:1.2;
+  }
+
+  .card-body p{
+    font-size:12.5px;
+    line-height:1.35;
+    margin-bottom:7px;
+  }
+
+  .price{
+    margin-top:2px;
+  }
+}
+
+@media (max-width:390px){
+  .card{
+    gap:10px;
+    padding:10px;
+  }
+
+  .card-photo{
+    width:94px;
+    height:94px;
+    min-height:94px;
+    flex-basis:94px;
+  }
+}
+
