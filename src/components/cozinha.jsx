@@ -56,6 +56,8 @@ function proximoStatus(pedido) {
 }
 
 function tempoDesde(data) {
+  if (!data) return '';
+
   const inicio = new Date(data).getTime();
   const agora = Date.now();
 
@@ -84,6 +86,49 @@ function tempoDesde(data) {
   }
 
   return `${horas}h ${resto}min`;
+}
+
+function tempoEtapa(pedido) {
+  if (pedido.status === 'novo') {
+    return `Aguardando há ${tempoDesde(pedido.criado_em)}`;
+  }
+
+  if (pedido.status === 'confirmado') {
+    return `Confirmado há ${tempoDesde(
+      pedido.confirmado_em || pedido.criado_em
+    )}`;
+  }
+
+  if (pedido.status === 'preparo') {
+    return `Em preparo há ${tempoDesde(
+      pedido.preparo_em ||
+        pedido.confirmado_em ||
+        pedido.criado_em
+    )}`;
+  }
+
+  if (pedido.status === 'entrega') {
+    return `Saiu há ${tempoDesde(
+      pedido.pronto_em ||
+        pedido.preparo_em ||
+        pedido.criado_em
+    )}`;
+  }
+
+  if (pedido.status === 'pronto_retirada') {
+    return `Pronto há ${tempoDesde(
+      pedido.pronto_em ||
+        pedido.preparo_em ||
+        pedido.criado_em
+    )}`;
+  }
+
+  return tempoDesde(pedido.criado_em);
+}
+
+function codigoPedido(codigo) {
+  const texto = String(codigo || '').trim();
+  return texto.startsWith('#') ? texto : `#${texto}`;
 }
 
 function brl(valor) {
@@ -286,7 +331,7 @@ export default function Cozinha({
                 <div className="cozinha-card-topo">
                   <div>
                     <span className="pedido-codigo">
-                      #{pedido.codigo}
+                      {codigoPedido(pedido.codigo)}
                     </span>
 
                     <span className="pedido-hora">
@@ -303,10 +348,7 @@ export default function Cozinha({
                   </div>
 
                   <div className="pedido-tempo">
-                    {tempoDesde(
-                      pedido.criado_em,
-                      agora
-                    )}
+                    {agora && tempoEtapa(pedido)}
                   </div>
                 </div>
 
