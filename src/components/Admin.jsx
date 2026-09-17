@@ -2951,7 +2951,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
               <a
                 className="btn"
                 style={{ marginTop: 20 }}
-                href={`/api/admin/relatorio?periodo=${periodo}&formato=csv`}
+                href={`/api/admin/relatorio?periodo=${periodo}&formato=xlsx`}
               >
                 Baixar planilha deste período
               </a>
@@ -2964,7 +2964,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                   textAlign: 'center',
                 }}
               >
-                A planilha agora inclui o resumo de despesas e o resultado operacional.
+                A planilha Excel inclui o resumo financeiro, descontos, despesas, formas de pagamento e resultado operacional.
               </p>
             </>
           )}
