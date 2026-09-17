@@ -716,19 +716,33 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
           )
           : pedidos.map((p) => {
               const prox = {
-                novo: 'preparo',
-                preparo: 'entrega',
+                novo: 'confirmado',
+                confirmado: 'preparo',
+                preparo:
+                  p.tipo === 'retirada'
+                    ? 'pronto_retirada'
+                    : 'entrega',
                 entrega: 'concluido',
+                pronto_retirada: 'concluido',
               }[p.status];
 
               const rotulo = {
-                preparo:
-                  'Iniciar preparo',
-                entrega:
-                  'Saiu para entrega',
-                concluido:
-                  'Marcar concluído',
+                confirmado: 'Confirmar pedido',
+                preparo: 'Iniciar preparo',
+                entrega: 'Saiu para entrega',
+                pronto_retirada: 'Pronto para retirada',
+                concluido: 'Marcar concluído',
               }[prox];
+
+              const statusRotulo = {
+                novo: 'Novo pedido',
+                confirmado: 'Confirmado',
+                preparo: 'Em preparo',
+                entrega: 'Saiu para entrega',
+                pronto_retirada: 'Pronto para retirada',
+                concluido: 'Concluído',
+                cancelado: 'Cancelado',
+              }[p.status] || p.status;
 
               return (
                 <div
@@ -743,7 +757,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                     <span
                       className={`chip ${p.status}`}
                     >
-                      {p.status}
+                      {statusRotulo}
                     </span>
 
                     <span
