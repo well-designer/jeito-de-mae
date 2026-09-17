@@ -2716,6 +2716,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                 {[
                   ['Vendas', relatorio.totalVendas],
                   ['Faturamento', brl(relatorio.totalValor)],
+                  ['Descontos concedidos', brl(relatorio.totalDescontos || 0)],
                   ['Despesas', brl(relatorio.totalDespesas || 0)],
                   ['Resultado operacional', brl(relatorio.resultadoOperacional || 0)],
                   ['Ticket médio', brl(relatorio.ticketMedio)],
@@ -2891,7 +2892,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                         {' · '}
                         {String(d.data || '').split('-').reverse().join('/')}
                       </small>
-                      {d.observacao && <small>{d.observacao}</small>}
+                      {d.observacao && <small>· {d.observacao}</small>}
                     </div>
                     <span style={{ fontWeight: 800 }}>{brl(d.valor)}</span>
                     <button className="mini del" onClick={() => excluirDespesa(d.id)}>Excluir</button>
