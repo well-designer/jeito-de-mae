@@ -13,6 +13,8 @@ export default function Loja({ config, produtos }) {
   const [opcaoSel, setOpcaoSel] = useState(0);
   const [qtd, setQtd] = useState(1);
   const [obs, setObs] = useState('');
+  const [adicionaisSel, setAdicionaisSel] = useState([]);
+  const [talherSel, setTalherSel] = useState(null);
   const [toast, setToast] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
@@ -63,11 +65,34 @@ export default function Loja({ config, produtos }) {
     setOpcaoSel(0);
     setQtd(1);
     setObs('');
+    setAdicionaisSel([]);
+    setTalherSel(null);
     setModal('produto');
   }
 
   function adicionar() {
     const o = produtoSel.opcoes[opcaoSel];
+    const adicionaisDisponiveis = Array.isArray(produtoSel.adicionais)
+      ? produtoSel.adicionais
+      : [];
+
+    if (produtoSel.perguntar_talher && typeof talherSel !== 'boolean') {
+      avisar('Escolha se deseja talher descartável');
+      return;
+    }
+
+    const adicionais = adicionaisDisponiveis.filter((a) =>
+      adicionaisSel.includes(a.nome)
+    );
+
+    const totalAdicionais = adicionais.reduce(
+      (s, a) => s + Number(a.preco || 0),
+      0
+    );
+
+    const precoUnitario = Number(
+      (Number(o.preco) + totalAdicionais).toFixed(2)
+    );
 
     setCarrinho((c) => [
       ...c,
@@ -76,9 +101,12 @@ export default function Loja({ config, produtos }) {
         produtoId: produtoSel.id,
         nome: produtoSel.nome,
         opcao: o.nome,
-        preco: Number(o.preco),
+        preco: precoUnitario,
+        precoBase: Number(o.preco),
         qtd,
         obs,
+        adicionais,
+        talher: produtoSel.perguntar_talher ? talherSel : null,
         foto_url: produtoSel.foto_url,
       },
     ]);
@@ -106,6 +134,8 @@ export default function Loja({ config, produtos }) {
             produtoId: i.produtoId,
             opcao: i.opcao,
             qtd: i.qtd,
+            adicionais: (i.adicionais || []).map((a) => a.nome),
+            talher: i.talher,
             obs: i.obs,
           })),
         }),
@@ -135,7 +165,28 @@ export default function Loja({ config, produtos }) {
     }
   }
 
-  const visiveis = produtos;
+  const diaAtual = (() => {
+    const nomeDia = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      timeZone: 'America/Sao_Paulo',
+    }).format(new Date());
+
+    return {
+      Monday: 'segunda',
+      Tuesday: 'terca',
+      Wednesday: 'quarta',
+      Thursday: 'quinta',
+      Friday: 'sexta',
+      Saturday: 'sabado',
+      Sunday: 'domingo',
+    }[nomeDia];
+  })();
+
+  const visiveis = produtos.filter((p) => {
+    if (p.ativo === false) return false;
+    const dias = Array.isArray(p.dias_semana) ? p.dias_semana : [];
+    return dias.includes(diaAtual);
+  });
 
   const cats = catAtiva === 'Todos'
     ? CATEGORIAS.filter((c) => visiveis.some((p) => p.categoria === c))
@@ -248,7 +299,9 @@ export default function Loja({ config, produtos }) {
 
       <main className="wrap">
         {visiveis.length === 0 && (
-          <div className="empty">O cardápio ainda está vazio.</div>
+          <div className="empty">
+            Não temos itens cadastrados para o cardápio de hoje.
+          </div>
         )}
 
         {cats.map((c) => {
@@ -421,6 +474,74 @@ export default function Loja({ config, produtos }) {
                     </label>
                   ))}
 
+                  {(produtoSel.adicionais || []).length > 0 && (
+                    <>
+                      <label className="f" style={{ marginTop: 20 }}>
+                        Quer adicionar algo?
+                      </label>
+
+                      <div className="adicionais-lista">
+                        {(produtoSel.adicionais || []).map((a, i) => {
+                          const marcado = adicionaisSel.includes(a.nome);
+
+                          return (
+                            <label
+                              key={`${a.nome}-${i}`}
+                              className={`opt adicional-opt ${marcado ? 'active' : ''}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={marcado}
+                                onChange={() =>
+                                  setAdicionaisSel((atuais) =>
+                                    marcado
+                                      ? atuais.filter((nome) => nome !== a.nome)
+                                      : [...atuais, a.nome]
+                                  )
+                                }
+                              />
+
+                              <span className="on">{a.nome}</span>
+                              <span className="op">+ {brl(a.preco)}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {produtoSel.perguntar_talher && (
+                    <>
+                      <label className="f" style={{ marginTop: 20 }}>
+                        Precisa de talher descartável?
+                      </label>
+
+                      <label
+                        className={`opt ${talherSel === true ? 'active' : ''}`}
+                        onClick={() => setTalherSel(true)}
+                      >
+                        <input
+                          type="radio"
+                          readOnly
+                          checked={talherSel === true}
+                        />
+                        <span className="on">Sim, quero talher</span>
+                      </label>
+
+                      <label
+                        className={`opt ${talherSel === false ? 'active' : ''}`}
+                        onClick={() => setTalherSel(false)}
+                      >
+                        <input
+                          type="radio"
+                          readOnly
+                          checked={talherSel === false}
+                        />
+                        <span className="on">Não preciso de talher</span>
+                      </label>
+                    </>
+                  )}
+
                   <label className="f">
                     Alguma observação?
                   </label>
@@ -470,7 +591,12 @@ export default function Loja({ config, produtos }) {
                     >
                       {aberto
                         ? `Adicionar · ${brl(
-                            produtoSel.opcoes[opcaoSel].preco * qtd
+                            (
+                              Number(produtoSel.opcoes[opcaoSel].preco) +
+                              (produtoSel.adicionais || [])
+                                .filter((a) => adicionaisSel.includes(a.nome))
+                                .reduce((s, a) => s + Number(a.preco || 0), 0)
+                            ) * qtd
                           )}`
                         : 'Loja fechada'}
                     </button>
@@ -501,7 +627,21 @@ export default function Loja({ config, produtos }) {
 
                         <small>
                           {i.opcao}
-                          {i.obs ? ` · ${i.obs}` : ''}
+                          {(i.adicionais || []).map((a) => (
+                            <span key={a.nome} style={{ display: 'block' }}>
+                              + {a.nome} ({brl(a.preco)})
+                            </span>
+                          ))}
+                          {typeof i.talher === 'boolean' && (
+                            <span style={{ display: 'block' }}>
+                              Talher: {i.talher ? 'Sim' : 'Não'}
+                            </span>
+                          )}
+                          {i.obs && (
+                            <span style={{ display: 'block' }}>
+                              Obs.: {i.obs}
+                            </span>
+                          )}
                         </small>
                       </div>
 
