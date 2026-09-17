@@ -8,6 +8,8 @@ import IconeImagem from './IconeImagem';
 const VAZIO = {
   nome: '', descricao: '', categoria: 'Prato do dia',
   opcoes: [{ nome: 'Individual', preco: 0, precoDe: '' }],
+  dias_semana: ['segunda','terca','quarta','quinta','sexta','sabado','domingo'],
+  adicionais: [], perguntar_talher: false,
   foto_url: null, ativo: true, destaque: false, ordem: 0,
 };
 
@@ -92,7 +94,14 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
       body: JSON.stringify({
         ...(p.id ? { id: p.id } : {}),
         nome: p.nome.trim(), descricao: (p.descricao || '').trim(),
-        categoria: p.categoria, opcoes, foto_url: p.foto_url || null,
+        categoria: p.categoria, opcoes,
+        dias_semana: Array.isArray(p.dias_semana) && p.dias_semana.length ? p.dias_semana : [],
+        adicionais: (p.adicionais || []).filter((a) => String(a.nome || '').trim()).map((a) => ({
+          nome: String(a.nome).trim(),
+          preco: Number(String(a.preco ?? 0).replace(',', '.')) || 0,
+        })),
+        perguntar_talher: !!p.perguntar_talher,
+        foto_url: p.foto_url || null,
         ativo: p.ativo !== false, destaque: !!p.destaque, ordem: Number(p.ordem) || 0,
       }),
     });
@@ -361,6 +370,64 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
           <button className="mini" onClick={() => setEditando({
             ...editando, opcoes: [...editando.opcoes, { nome: '', preco: 0, precoDe: '' }],
           })}>+ Adicionar tamanho</button>
+
+          <label className="f" style={{ marginTop: 22 }}>Dias em que este prato aparece</label>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '-4px 0 10px' }}>
+            Marque todos os dias em que este item pode ser pedido. Domingo fica disponível para uso futuro.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[['segunda','Seg'],['terca','Ter'],['quarta','Qua'],['quinta','Qui'],['sexta','Sex'],['sabado','Sáb'],['domingo','Dom']].map(([valor, rotulo]) => {
+              const marcados = Array.isArray(editando.dias_semana) ? editando.dias_semana : [];
+              const ativo = marcados.includes(valor);
+              return (
+                <button key={valor} type="button" className={`mini ${ativo ? 'active' : ''}`}
+                  onClick={() => setEditando({
+                    ...editando,
+                    dias_semana: ativo ? marcados.filter((d) => d !== valor) : [...marcados, valor],
+                  })}>
+                  {ativo ? '✓ ' : ''}{rotulo}
+                </button>
+              );
+            })}
+            <button type="button" className="mini" onClick={() => setEditando({
+              ...editando, dias_semana: ['segunda','terca','quarta','quinta','sexta','sabado','domingo'],
+            })}>Todos os dias</button>
+          </div>
+
+          <label className="f" style={{ marginTop: 22 }}>Adicionais deste prato</label>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '-4px 0 10px' }}>
+            Cadastre somente os extras que podem ser escolhidos neste produto. O preço pode ser R$ 0,00.
+          </p>
+          {(editando.adicionais || []).map((a, i) => (
+            <div className="opt-edit" key={i}>
+              <input className="inp" value={a.nome || ''} placeholder="Ex.: Bisteca extra"
+                onChange={(e) => {
+                  const adicionais = [...(editando.adicionais || [])];
+                  adicionais[i] = { ...adicionais[i], nome: e.target.value };
+                  setEditando({ ...editando, adicionais });
+                }} />
+              <input className="inp" style={{ maxWidth: 110 }} inputMode="decimal" value={a.preco ?? ''}
+                placeholder="R$ 0,00" onChange={(e) => {
+                  const adicionais = [...(editando.adicionais || [])];
+                  adicionais[i] = { ...adicionais[i], preco: e.target.value };
+                  setEditando({ ...editando, adicionais });
+                }} />
+              <button type="button" className="mini del" onClick={() => setEditando({
+                ...editando, adicionais: (editando.adicionais || []).filter((_, ix) => ix !== i),
+              })}>✕</button>
+            </div>
+          ))}
+          <button type="button" className="mini" onClick={() => setEditando({
+            ...editando, adicionais: [...(editando.adicionais || []), { nome: '', preco: 0 }],
+          })}>+ Adicionar adicional</button>
+
+          <label className="opt" style={{ marginTop: 18 }}
+            onClick={() => setEditando({ ...editando, perguntar_talher: !editando.perguntar_talher })}>
+            <input type="checkbox" readOnly checked={!!editando.perguntar_talher} />
+            <span className="on">Perguntar se deseja talher descartável<br />
+              <small style={{ fontWeight: 400, color: 'var(--muted)' }}>O cliente escolherá sim ou não antes de adicionar ao carrinho.</small>
+            </span>
+          </label>
 
           <label className="opt" style={{ marginTop: 18 }}
             onClick={() => setEditando({ ...editando, destaque: !editando.destaque })}>
