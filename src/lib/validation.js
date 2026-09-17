@@ -287,8 +287,10 @@ export const statusPedidoSchema = z.object({
 
   status: z.enum([
     'novo',
+    'confirmado',
     'preparo',
     'entrega',
+    'pronto_retirada',
     'concluido',
     'cancelado',
   ]).optional(),
