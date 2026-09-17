@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { pedidoSchema } from '@/lib/validation';
+import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
 import { criarPagamentoPix } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
@@ -37,7 +37,10 @@ function diaAtualSaoPaulo() {
 export async function POST(request) {
   if (!limitar(`pedido:${ipDe(request)}`, 8, 60_000)) {
     return NextResponse.json(
-      { erro: 'Muitas tentativas seguidas. Aguarde um minuto.' },
+      {
+        erro:
+          'Muitas tentativas seguidas. Aguarde um minuto.',
+      },
       { status: 429 }
     );
   }
@@ -185,7 +188,9 @@ export async function POST(request) {
     // O servidor encontra os precos verdadeiros no cadastro.
     // ---------------------------------------------------------------
 
-    const adicionaisDisponiveis = Array.isArray(produto.adicionais)
+    const adicionaisDisponiveis = Array.isArray(
+      produto.adicionais
+    )
       ? produto.adicionais
       : [];
 
@@ -283,7 +288,7 @@ export async function POST(request) {
   }
 
   // -------------------------------------------------------------------
-  // Calcula subtotal, entrega e total.
+  // Calcula subtotal e entrega.
   // -------------------------------------------------------------------
 
   const subtotal = Number(
@@ -301,8 +306,283 @@ export async function POST(request) {
       ? 0
       : Number(config.taxa_entrega || 0);
 
+  // -------------------------------------------------------------------
+  // CUPOM DE DESCONTO
+  //
+  // O navegador envia apenas o codigo.
+  // Todas as regras e o valor real do desconto sao calculados aqui.
+  // -------------------------------------------------------------------
+
+  const telefoneNormalizado = soDigitos(
+    dados.telefone
+  );
+
+  const codigoCupom = String(
+    dados.cupom || ''
+  )
+    .trim()
+    .toUpperCase();
+
+  let cupom = null;
+  let desconto = 0;
+
+  if (codigoCupom) {
+    // ---------------------------------------------------------------
+    // Procura o cupom.
+    // ---------------------------------------------------------------
+
+    const {
+      data: cupomEncontrado,
+      error: erroCupom,
+    } = await sb
+      .from('cupons')
+      .select('*')
+      .eq('codigo', codigoCupom)
+      .maybeSingle();
+
+    if (erroCupom) {
+      console.error(
+        '[pedidos] cupom:',
+        erroCupom
+      );
+
+      return NextResponse.json(
+        {
+          erro:
+            'Nao foi possivel validar o cupom.',
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!cupomEncontrado) {
+      return NextResponse.json(
+        { erro: 'Cupom invalido.' },
+        { status: 400 }
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // Cupom ativo?
+    // ---------------------------------------------------------------
+
+    if (!cupomEncontrado.ativo) {
+      return NextResponse.json(
+        {
+          erro:
+            'Este cupom nao esta ativo.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // Validade.
+    // ---------------------------------------------------------------
+
+    const agora = new Date();
+
+    if (
+      cupomEncontrado.valido_de &&
+      agora < new Date(cupomEncontrado.valido_de)
+    ) {
+      return NextResponse.json(
+        {
+          erro:
+            'Este cupom ainda nao esta valido.',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      cupomEncontrado.valido_ate &&
+      agora > new Date(cupomEncontrado.valido_ate)
+    ) {
+      return NextResponse.json(
+        {
+          erro:
+            'Este cupom expirou.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // Limite total de utilizacoes.
+    //
+    // A fonte real para essa verificacao e a tabela cupom_usos.
+    // ---------------------------------------------------------------
+
+    if (
+      cupomEncontrado.limite_usos !== null
+    ) {
+      const {
+        count,
+        error: erroContagem,
+      } = await sb
+        .from('cupom_usos')
+        .select(
+          'id',
+          {
+            count: 'exact',
+            head: true,
+          }
+        )
+        .eq(
+          'cupom_id',
+          cupomEncontrado.id
+        );
+
+      if (erroContagem) {
+        console.error(
+          '[pedidos] contagem cupom:',
+          erroContagem
+        );
+
+        return NextResponse.json(
+          {
+            erro:
+              'Nao foi possivel validar o limite do cupom.',
+          },
+          { status: 500 }
+        );
+      }
+
+      if (
+        (count || 0) >=
+        Number(cupomEncontrado.limite_usos)
+      ) {
+        return NextResponse.json(
+          {
+            erro:
+              'Este cupom atingiu o limite de utilizacoes.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Primeira compra.
+    //
+    // Se o cupom for marcado como "primeira compra",
+    // procuramos pedidos anteriores desse telefone.
+    //
+    // Pedidos cancelados nao impedem o uso.
+    // ---------------------------------------------------------------
+
+    if (cupomEncontrado.primeira_compra) {
+      const {
+        count: comprasAnteriores,
+        error: erroHistorico,
+      } = await sb
+        .from('pedidos')
+        .select(
+          'id',
+          {
+            count: 'exact',
+            head: true,
+          }
+        )
+        .eq(
+          'cliente_telefone_normalizado',
+          telefoneNormalizado
+        )
+        .neq(
+          'status',
+          'cancelado'
+        );
+
+      if (erroHistorico) {
+        console.error(
+          '[pedidos] primeira compra:',
+          erroHistorico
+        );
+
+        return NextResponse.json(
+          {
+            erro:
+              'Nao foi possivel validar a primeira compra.',
+          },
+          { status: 500 }
+        );
+      }
+
+      if ((comprasAnteriores || 0) > 0) {
+        return NextResponse.json(
+          {
+            erro:
+              'Este cupom e exclusivo para a primeira compra.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Calcula o desconto.
+    //
+    // percentual:
+    // subtotal R$ 50 / cupom 10% = R$ 5
+    //
+    // fixo:
+    // subtotal R$ 50 / cupom R$ 5 = R$ 5
+    // ---------------------------------------------------------------
+
+    if (
+      cupomEncontrado.tipo === 'percentual'
+    ) {
+      desconto = Number(
+        (
+          subtotal *
+          (
+            Number(cupomEncontrado.valor) /
+            100
+          )
+        ).toFixed(2)
+      );
+    } else if (
+      cupomEncontrado.tipo === 'fixo'
+    ) {
+      desconto = Number(
+        Number(
+          cupomEncontrado.valor
+        ).toFixed(2)
+      );
+    } else {
+      return NextResponse.json(
+        {
+          erro:
+            'Configuracao de cupom invalida.',
+        },
+        { status: 500 }
+      );
+    }
+
+    // O desconto nunca pode ficar negativo
+    // nem ultrapassar o subtotal dos produtos.
+    desconto = Math.min(
+      Math.max(desconto, 0),
+      subtotal
+    );
+
+    cupom = cupomEncontrado;
+  }
+
+  // -------------------------------------------------------------------
+  // Total final.
+  //
+  // A taxa de entrega nao recebe desconto.
+  //
+  // subtotal - desconto + taxa
+  // -------------------------------------------------------------------
+
   const total = Number(
-    (subtotal + taxa).toFixed(2)
+    Math.max(
+      0,
+      subtotal - desconto + taxa
+    ).toFixed(2)
   );
 
   // -------------------------------------------------------------------
@@ -312,13 +592,24 @@ export async function POST(request) {
   // informacao do talher ficam armazenados junto com cada item.
   // -------------------------------------------------------------------
 
-  const { data: pedido, error } = await sb
+  const {
+    data: pedido,
+    error,
+  } = await sb
     .from('pedidos')
     .insert({
       codigo: gerarCodigo(),
 
       cliente_nome: dados.nome,
+
+      // Mantemos o telefone exatamente como foi informado
+      // para exibicao no painel.
       cliente_telefone: dados.telefone,
+
+      // E guardamos uma segunda versao somente com numeros
+      // para regras como primeira compra.
+      cliente_telefone_normalizado:
+        telefoneNormalizado,
 
       cliente_endereco:
         dados.tipo === 'entrega'
@@ -335,19 +626,32 @@ export async function POST(request) {
       itens,
 
       subtotal,
+
       taxa,
+
+      desconto,
+
+      cupom_codigo:
+        cupom
+          ? cupom.codigo
+          : null,
+
       total,
 
       pagamento: dados.pagamento,
 
       status_pagamento: 'pendente',
+
       status: 'novo',
     })
     .select()
     .single();
 
   if (error) {
-    console.error('[pedidos] insert:', error);
+    console.error(
+      '[pedidos] insert:',
+      error
+    );
 
     return NextResponse.json(
       {
@@ -359,40 +663,138 @@ export async function POST(request) {
   }
 
   // -------------------------------------------------------------------
+  // Registra o uso do cupom.
+  //
+  // Isso acontece somente depois que o pedido realmente foi criado.
+  // -------------------------------------------------------------------
+
+  if (cupom) {
+    const {
+      error: erroUso,
+    } = await sb
+      .from('cupom_usos')
+      .insert({
+        cupom_id: cupom.id,
+        pedido_id: pedido.id,
+        cliente_telefone:
+          telefoneNormalizado,
+      });
+
+    if (erroUso) {
+      console.error(
+        '[pedidos] registrar uso cupom:',
+        erroUso
+      );
+
+      // Se o uso do cupom nao puder ser registrado,
+      // removemos o pedido recem-criado.
+      //
+      // Assim nao deixamos um pedido com desconto sem
+      // registrar corretamente a utilizacao.
+      await sb
+        .from('pedidos')
+        .delete()
+        .eq('id', pedido.id);
+
+      return NextResponse.json(
+        {
+          erro:
+            'Nao foi possivel registrar o uso do cupom. Tente novamente.',
+        },
+        { status: 500 }
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // Atualiza o contador visual "usos" do cupom.
+    //
+    // A tabela cupom_usos continua sendo a fonte real.
+    // ---------------------------------------------------------------
+
+    const {
+      count: totalUsos,
+      error: erroTotalUsos,
+    } = await sb
+      .from('cupom_usos')
+      .select(
+        'id',
+        {
+          count: 'exact',
+          head: true,
+        }
+      )
+      .eq(
+        'cupom_id',
+        cupom.id
+      );
+
+    if (!erroTotalUsos) {
+      await sb
+        .from('cupons')
+        .update({
+          usos: totalUsos || 0,
+        })
+        .eq(
+          'id',
+          cupom.id
+        );
+    }
+  }
+
+  // -------------------------------------------------------------------
   // Pix dinamico.
+  //
+  // IMPORTANTE:
+  // "total" aqui ja contem o desconto do cupom.
   // -------------------------------------------------------------------
 
   let pix = null;
 
   if (dados.pagamento === 'pix') {
     try {
-      const cobranca = await criarPagamentoPix({
-        valor: total,
-        descricao: `Pedido ${pedido.codigo} - Jeito de Mae`,
-        pedidoId: pedido.id,
-        nome: dados.nome,
-      });
+      const cobranca =
+        await criarPagamentoPix({
+          valor: total,
+
+          descricao:
+            `Pedido ${pedido.codigo} - Jeito de Mae`,
+
+          pedidoId: pedido.id,
+
+          nome: dados.nome,
+        });
 
       pix = {
         qrCode: cobranca.qrCode,
-        qrCodeBase64: cobranca.qrCodeBase64,
-        expiraEm: cobranca.expiraEm,
+        qrCodeBase64:
+          cobranca.qrCodeBase64,
+        expiraEm:
+          cobranca.expiraEm,
       };
 
       await sb
         .from('pedidos')
         .update({
-          mp_payment_id: cobranca.id,
+          mp_payment_id:
+            cobranca.id,
         })
-        .eq('id', pedido.id);
+        .eq(
+          'id',
+          pedido.id
+        );
     } catch (e) {
-      console.error('[pedidos] pix:', e);
+      console.error(
+        '[pedidos] pix:',
+        e
+      );
 
       return NextResponse.json(
         {
           erro:
             'Pedido registrado, mas o Pix falhou. Fale com a loja.',
-          pedidoId: pedido.id,
+
+          pedidoId:
+            pedido.id,
         },
         { status: 502 }
       );
@@ -400,7 +802,9 @@ export async function POST(request) {
   } else {
     // Dinheiro na entrega:
     // avisa a cozinha imediatamente.
-    avisarPedidoNovo(pedido).catch(() => {});
+    avisarPedidoNovo(
+      pedido
+    ).catch(() => {});
   }
 
   return NextResponse.json({
@@ -408,9 +812,24 @@ export async function POST(request) {
 
     pedido: {
       id: pedido.id,
-      codigo: pedido.codigo,
-      total: pedido.total,
-      tipo: pedido.tipo,
+
+      codigo:
+        pedido.codigo,
+
+      subtotal:
+        pedido.subtotal,
+
+      desconto:
+        pedido.desconto,
+
+      cupom:
+        pedido.cupom_codigo,
+
+      total:
+        pedido.total,
+
+      tipo:
+        pedido.tipo,
     },
 
     pix,
