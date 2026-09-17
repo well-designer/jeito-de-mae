@@ -21,6 +21,10 @@ export default function Loja({ config, produtos }) {
   const [pix, setPix] = useState(null);
   const [pedidoFeito, setPedidoFeito] = useState(null);
   const [pago, setPago] = useState(false);
+  const [cupomDigitado, setCupomDigitado] = useState('');
+  const [cupomAplicado, setCupomAplicado] = useState(null);
+  const [validandoCupom, setValidandoCupom] = useState(false);
+  const [erroCupom, setErroCupom] = useState('');
 
   const [form, setForm] = useState({
     nome: '', telefone: '', endereco: '', referencia: '',
@@ -32,6 +36,8 @@ export default function Loja({ config, produtos }) {
   const subtotal = useMemo(
     () => carrinho.reduce((s, i) => s + i.preco * i.qtd, 0), [carrinho]
   );
+  const descontoCupom = Number(cupomAplicado?.desconto || 0);
+  const totalCheckout = Math.max(0, subtotal - descontoCupom) + taxa;
 
   function avisar(msg) {
     setToast(msg);
@@ -115,6 +121,52 @@ export default function Loja({ config, produtos }) {
     avisar(`${produtoSel.nome} adicionado`);
   }
 
+  async function aplicarCupom() {
+    const codigo = cupomDigitado.trim().toUpperCase();
+
+    setErroCupom('');
+
+    if (!codigo) {
+      setCupomAplicado(null);
+      setErroCupom('Digite o código do cupom.');
+      return;
+    }
+
+    setValidandoCupom(true);
+
+    try {
+      const res = await fetch('/api/cupons/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo,
+          telefone: form.telefone,
+          subtotal,
+        }),
+      });
+
+      const dados = await res.json();
+
+      if (!res.ok) {
+        setCupomAplicado(null);
+        setErroCupom(dados.erro || 'Não foi possível aplicar o cupom.');
+        return;
+      }
+
+      setCupomDigitado(dados.cupom.codigo);
+      setCupomAplicado({
+        ...dados.cupom,
+        desconto: Number(dados.desconto || 0),
+      });
+      avisar('Cupom aplicado com sucesso');
+    } catch {
+      setCupomAplicado(null);
+      setErroCupom('Falha de conexão ao validar o cupom.');
+    } finally {
+      setValidandoCupom(false);
+    }
+  }
+
   async function confirmar() {
     setErro('');
     setEnviando(true);
@@ -130,6 +182,7 @@ export default function Loja({ config, produtos }) {
           referencia: form.referencia,
           tipo: form.tipo,
           pagamento: form.pagamento,
+          cupom: cupomAplicado?.codigo || '',
           itens: carrinho.map((i) => ({
             produtoId: i.produtoId,
             opcao: i.opcao,
@@ -150,6 +203,9 @@ export default function Loja({ config, produtos }) {
 
       setPedidoFeito(dados.pedido);
       setCarrinho([]);
+      setCupomDigitado('');
+      setCupomAplicado(null);
+      setErroCupom('');
 
       if (dados.pix) {
         setPix(dados.pix);
@@ -790,6 +846,48 @@ export default function Loja({ config, produtos }) {
                     placeholder="(11) 90000-0000"
                   />
 
+                  <label className="f">
+                    Cupom de desconto
+                  </label>
+
+                  <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
+                    <input
+                      className="inp"
+                      maxLength={40}
+                      value={cupomDigitado}
+                      onChange={(e) => {
+                        setCupomDigitado(e.target.value.toUpperCase());
+                        setCupomAplicado(null);
+                        setErroCupom('');
+                      }}
+                      placeholder="Ex.: TESTE10"
+                      style={{ margin: 0, flex: 1 }}
+                    />
+
+                    <button
+                      type="button"
+                      className="btn sm"
+                      disabled={validandoCupom || !carrinho.length}
+                      onClick={aplicarCupom}
+                      style={{ width: 'auto', flex: '0 0 auto' }}
+                    >
+                      {validandoCupom ? 'Validando...' : 'Aplicar'}
+                    </button>
+                  </div>
+
+                  {erroCupom && (
+                    <div className="alert err" style={{ marginTop: 8 }}>
+                      {erroCupom}
+                    </div>
+                  )}
+
+                  {cupomAplicado && (
+                    <div className="alert ok" style={{ marginTop: 8 }}>
+                      <b>{cupomAplicado.codigo}</b> aplicado · desconto de{' '}
+                      <b>{brl(descontoCupom)}</b>
+                    </div>
+                  )}
+
                   {form.tipo === 'entrega' ? (
                     <>
                       <label className="f">
@@ -896,6 +994,13 @@ export default function Loja({ config, produtos }) {
                       <span>{brl(subtotal)}</span>
                     </div>
 
+                    {cupomAplicado && descontoCupom > 0 && (
+                      <div className="tot">
+                        <span>Desconto ({cupomAplicado.codigo})</span>
+                        <span>- {brl(descontoCupom)}</span>
+                      </div>
+                    )}
+
                     <div className="tot">
                       <span>Entrega</span>
                       <span>{brl(taxa)}</span>
@@ -903,7 +1008,7 @@ export default function Loja({ config, produtos }) {
 
                     <div className="tot big">
                       <span>Total</span>
-                      <span>{brl(subtotal + taxa)}</span>
+                      <span>{brl(totalCheckout)}</span>
                     </div>
                   </div>
 
