@@ -44,6 +44,9 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
   const [periodo, setPeriodo] = useState('semana');
   const [relatorio, setRelatorio] = useState(null);
   const [carregandoRel, setCarregandoRel] = useState(false);
+  const [despesas, setDespesas] = useState([]);
+  const [novaDespesa, setNovaDespesa] = useState(null);
+  const [salvandoDespesa, setSalvandoDespesa] = useState(false);
 
   const [cupons, setCupons] = useState([]);
   const [editandoCupom, setEditandoCupom] = useState(null);
@@ -301,6 +304,97 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
       ativo = false;
     };
   }, [aba, periodo]);
+
+  // Carrega as despesas quando o Financeiro for aberto
+  useEffect(() => {
+    if (aba !== 'financeiro') return;
+
+    let ativo = true;
+
+    fetch('/api/admin/despesas', { cache: 'no-store' })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Falha ao carregar despesas');
+        if (ativo) setDespesas(d.despesas || []);
+      })
+      .catch((e) => {
+        if (ativo) avisar(e.message || 'Falha ao carregar despesas');
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [aba]);
+
+  function abrirNovaDespesa() {
+    const hoje = new Date().toLocaleDateString('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+    });
+
+    setNovaDespesa({
+      descricao: '',
+      categoria: 'alimentos',
+      valor: '',
+      data: hoje,
+      observacao: '',
+    });
+  }
+
+  async function salvarDespesa() {
+    if (!novaDespesa) return;
+
+    const descricao = String(novaDespesa.descricao || '').trim();
+    const valor = Number(String(novaDespesa.valor || '').replace(',', '.'));
+
+    if (!descricao) return avisar('Informe a descrição da despesa');
+    if (!Number.isFinite(valor) || valor <= 0) return avisar('Informe um valor válido');
+    if (!novaDespesa.data) return avisar('Informe a data da despesa');
+
+    setSalvandoDespesa(true);
+
+    try {
+      const res = await fetch('/api/admin/despesas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          descricao,
+          categoria: novaDespesa.categoria,
+          valor,
+          data: novaDespesa.data,
+          observacao: String(novaDespesa.observacao || '').trim(),
+        }),
+      });
+
+      const d = await res.json();
+      if (!res.ok) return avisar(d.erro || 'Falha ao salvar despesa');
+
+      setDespesas((lista) => [d.despesa, ...lista]);
+      setNovaDespesa(null);
+      avisar('Despesa salva');
+
+      const rr = await fetch(`/api/admin/relatorio?periodo=${periodo}`, { cache: 'no-store' });
+      if (rr.ok) setRelatorio((await rr.json()).relatorio || null);
+    } catch {
+      avisar('Falha ao salvar despesa');
+    } finally {
+      setSalvandoDespesa(false);
+    }
+  }
+
+  async function excluirDespesa(id) {
+    if (!confirm('Excluir esta despesa?')) return;
+
+    const res = await fetch(`/api/admin/despesas?id=${id}`, { method: 'DELETE' });
+    const d = await res.json().catch(() => ({}));
+
+    if (!res.ok) return avisar(d.erro || 'Falha ao excluir despesa');
+
+    setDespesas((lista) => lista.filter((x) => x.id !== id));
+    avisar('Despesa excluída');
+
+    const rr = await fetch(`/api/admin/relatorio?periodo=${periodo}`, { cache: 'no-store' });
+    if (rr.ok) setRelatorio((await rr.json()).relatorio || null);
+  }
 
   // Carrega os cupons quando a aba for aberta
   useEffect(() => {
@@ -2591,41 +2685,18 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
 
       {aba === 'financeiro' && (
         <div>
-          <div
-            className="cats-in"
-            style={{
-              marginBottom: 16,
-            }}
-          >
+          <div className="cats-in" style={{ marginBottom: 16 }}>
             {[
               ['hoje', 'Hoje'],
-              [
-                'semana',
-                'Esta semana',
-              ],
-              [
-                'semana_passada',
-                'Semana passada',
-              ],
-              [
-                'mes',
-                'Este mês',
-              ],
-              [
-                'tudo',
-                'Tudo',
-              ],
+              ['semana', 'Esta semana'],
+              ['semana_passada', 'Semana passada'],
+              ['mes', 'Este mês'],
+              ['tudo', 'Tudo'],
             ].map(([v, t]) => (
               <button
                 key={v}
-                className={`cat ${
-                  periodo === v
-                    ? 'active'
-                    : ''
-                }`}
-                onClick={() =>
-                  setPeriodo(v)
-                }
+                className={`cat ${periodo === v ? 'active' : ''}`}
+                onClick={() => setPeriodo(v)}
               >
                 {t}
               </button>
@@ -2633,311 +2704,269 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
           </div>
 
           {carregandoRel && (
-            <div className="empty">
-              Somando os pedidos...
-            </div>
+            <div className="empty">Somando vendas e despesas...</div>
           )}
 
-          {!carregandoRel &&
-            relatorio && (
-              <>
-                <div
-                  className="grid"
-                  style={{
-                    gridTemplateColumns:
-                      'repeat(auto-fit,minmax(150px,1fr))',
-                  }}
-                >
-                  {[
-                    [
-                      'Vendas',
-                      relatorio.totalVendas,
-                    ],
-                    [
-                      'Faturamento',
-                      brl(
-                        relatorio.totalValor
-                      ),
-                    ],
-                    [
-                      'Ticket médio',
-                      brl(
-                        relatorio.ticketMedio
-                      ),
-                    ],
-                    [
-                      'Entregas',
-                      `${relatorio.entregas} de ${relatorio.totalVendas}`,
-                    ],
-                  ].map(
-                    ([
-                      rotulo,
-                      valor,
-                    ]) => (
-                      <div
-                        key={
-                          rotulo
-                        }
-                        style={{
-                          background:
-                            'var(--surface)',
-                          border:
-                            '1px solid var(--line)',
-                          borderRadius:
-                            14,
-                          padding:
-                            '14px 16px',
-                          boxShadow:
-                            'var(--shadow)',
-                        }}
-                      >
-                        <small
-                          style={{
-                            color:
-                              'var(--muted)',
-                            fontSize:
-                              12,
-                            textTransform:
-                              'uppercase',
-                            letterSpacing:
-                              .4,
-                            fontWeight:
-                              700,
-                          }}
-                        >
-                          {
-                            rotulo
-                          }
-                        </small>
-
-                        <div
-                          style={{
-                            fontFamily:
-                              'var(--serif)',
-                            fontSize:
-                              24,
-                            fontWeight:
-                              700,
-                            color:
-                              'var(--brand)',
-                            marginTop:
-                              2,
-                          }}
-                        >
-                          {valor}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-
-                <h2 className="sec">
-                  Dia a dia
-                </h2>
-
-                {relatorio.porDia
-                  .length === 0 ? (
-                  <div className="empty">
-                    Nenhuma venda
-                    neste período.
-                  </div>
-                ) : (
-                  relatorio.porDia.map(
-                    (l) => (
-                      <div
-                        className="adm-row"
-                        key={
-                          l.dia
-                        }
-                      >
-                        <div className="info">
-                          <b>
-                            {
-                              l.nome
-                            }
-                          </b>
-
-                          <small>
-                            {l.dia
-                              .split(
-                                '-'
-                              )
-                              .reverse()
-                              .join(
-                                '/'
-                              )}{' '}
-                            ·{' '}
-                            {
-                              l.vendas
-                            }{' '}
-                            {l.vendas ===
-                            1
-                              ? 'venda'
-                              : 'vendas'}
-                          </small>
-                        </div>
-
-                        <span
-                          style={{
-                            fontWeight:
-                              800,
-                            color:
-                              'var(--brand)',
-                          }}
-                        >
-                          {brl(
-                            l.valor
-                          )}
-                        </span>
-                      </div>
-                    )
-                  )
-                )}
-
-                <h2 className="sec">
-                  Por forma de
-                  pagamento
-                </h2>
-
-                {Object.entries(
-                  relatorio.porPagamento
-                ).length === 0 ? (
-                  <div className="empty">
-                    Sem pagamentos
-                    no período.
-                  </div>
-                ) : (
-                  Object.entries(
-                    relatorio.porPagamento
-                  ).map(
-                    ([
-                      forma,
-                      d,
-                    ]) => (
-                      <div
-                        className="adm-row"
-                        key={
-                          forma
-                        }
-                      >
-                        <div className="info">
-                          <b
-                            style={{
-                              textTransform:
-                                'capitalize',
-                            }}
-                          >
-                            {
-                              forma
-                            }
-                          </b>
-
-                          <small>
-                            {
-                              d.vendas
-                            }{' '}
-                            {d.vendas ===
-                            1
-                              ? 'venda'
-                              : 'vendas'}
-                          </small>
-                        </div>
-
-                        <span
-                          style={{
-                            fontWeight:
-                              800,
-                          }}
-                        >
-                          {brl(
-                            d.valor
-                          )}
-                        </span>
-                      </div>
-                    )
-                  )
-                )}
-
-                {relatorio
-                  .aguardandoPagamento
-                  .vendas >
-                  0 && (
+          {!carregandoRel && relatorio && (
+            <>
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(145px,1fr))' }}
+              >
+                {[
+                  ['Vendas', relatorio.totalVendas],
+                  ['Faturamento', brl(relatorio.totalValor)],
+                  ['Despesas', brl(relatorio.totalDespesas || 0)],
+                  ['Resultado operacional', brl(relatorio.resultadoOperacional || 0)],
+                  ['Ticket médio', brl(relatorio.ticketMedio)],
+                  ['Entregas', `${relatorio.entregas} de ${relatorio.totalVendas}`],
+                ].map(([rotulo, valor]) => (
                   <div
-                    className="alert"
+                    key={rotulo}
                     style={{
-                      marginTop:
-                        16,
+                      background: 'var(--surface)',
+                      border: '1px solid var(--line)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
+                      boxShadow: 'var(--shadow)',
                     }}
                   >
-                    <b>
-                      {
-                        relatorio
-                          .aguardandoPagamento
-                          .vendas
-                      }{' '}
-                      Pix ainda não
-                      confirmado(s)
-                    </b>{' '}
-                    somando{' '}
-                    {brl(
-                      relatorio
-                        .aguardandoPagamento
-                        .valor
-                    )}
-                    . Esses valores
-                    não entram no
-                    faturamento
-                    acima.
+                    <small
+                      style={{
+                        color: 'var(--muted)',
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: .4,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {rotulo}
+                    </small>
+                    <div
+                      style={{
+                        fontFamily: 'var(--serif)',
+                        fontSize: 24,
+                        fontWeight: 700,
+                        color: 'var(--brand)',
+                        marginTop: 2,
+                      }}
+                    >
+                      {valor}
+                    </div>
                   </div>
-                )}
+                ))}
+              </div>
 
-                {relatorio.cancelados >
-                  0 && (
-                  <p
-                    style={{
-                      color:
-                        'var(--muted)',
-                      fontSize:
-                        13,
-                    }}
-                  >
-                    {
-                      relatorio.cancelados
-                    }{' '}
-                    pedido(s)
-                    cancelado(s) no
-                    período, fora da
-                    conta.
-                  </p>
-                )}
+              <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '10px 0 0' }}>
+                Resultado operacional = faturamento considerado no período menos as despesas cadastradas.
+              </p>
 
-                <a
-                  className="btn"
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginTop: 24,
+                  marginBottom: 12,
+                }}
+              >
+                <h2 className="sec" style={{ margin: 0 }}>Despesas</h2>
+                <button className="mini" onClick={abrirNovaDespesa}>+ Nova despesa</button>
+              </div>
+
+              {novaDespesa && (
+                <div
                   style={{
-                    marginTop: 20,
-                  }}
-                  href={`/api/admin/relatorio?periodo=${periodo}&formato=csv`}
-                >
-                  Baixar planilha
-                  deste período
-                </a>
-
-                <p
-                  style={{
-                    color:
-                      'var(--muted)',
-                    fontSize: 12.5,
-                    marginTop: 10,
-                    textAlign:
-                      'center',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 14,
+                    padding: 16,
+                    marginBottom: 16,
+                    boxShadow: 'var(--shadow)',
                   }}
                 >
-                  Abre direto no
-                  Excel e no Google
-                  Planilhas.
+                  <label className="f">Descrição</label>
+                  <input
+                    className="inp"
+                    value={novaDespesa.descricao}
+                    maxLength={160}
+                    placeholder="Ex.: Compra de carnes"
+                    onChange={(e) => setNovaDespesa({ ...novaDespesa, descricao: e.target.value })}
+                  />
+
+                  <div className="row">
+                    <div>
+                      <label className="f">Categoria</label>
+                      <select
+                        className="inp"
+                        value={novaDespesa.categoria}
+                        onChange={(e) => setNovaDespesa({ ...novaDespesa, categoria: e.target.value })}
+                      >
+                        <option value="alimentos">Alimentos</option>
+                        <option value="embalagens">Embalagens</option>
+                        <option value="bebidas">Bebidas</option>
+                        <option value="gas">Gás</option>
+                        <option value="limpeza">Limpeza</option>
+                        <option value="entrega">Entrega</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="f">Valor (R$)</label>
+                      <input
+                        className="inp"
+                        inputMode="decimal"
+                        value={novaDespesa.valor}
+                        placeholder="0,00"
+                        onChange={(e) => setNovaDespesa({ ...novaDespesa, valor: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="f">Data</label>
+                  <input
+                    className="inp"
+                    type="date"
+                    value={novaDespesa.data}
+                    onChange={(e) => setNovaDespesa({ ...novaDespesa, data: e.target.value })}
+                  />
+
+                  <label className="f">Observação (opcional)</label>
+                  <textarea
+                    className="inp"
+                    value={novaDespesa.observacao}
+                    maxLength={500}
+                    placeholder="Ex.: Compra para o movimento do fim de semana"
+                    onChange={(e) => setNovaDespesa({ ...novaDespesa, observacao: e.target.value })}
+                  />
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    <button className="mini" disabled={salvandoDespesa} onClick={salvarDespesa}>
+                      {salvandoDespesa ? 'Salvando...' : 'Salvar despesa'}
+                    </button>
+                    <button className="mini" disabled={salvandoDespesa} onClick={() => setNovaDespesa(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {Object.values(relatorio.porCategoriaDespesa || {}).length > 0 && (
+                <>
+                  <h3 style={{ fontSize: 15, margin: '16px 0 8px' }}>Por categoria</h3>
+                  {Object.values(relatorio.porCategoriaDespesa || {})
+                    .sort((a, b) => Number(b.valor) - Number(a.valor))
+                    .map((d) => (
+                      <div className="adm-row" key={d.categoria}>
+                        <div className="info">
+                          <b>{d.nome}</b>
+                          <small>{d.quantidade} {d.quantidade === 1 ? 'lançamento' : 'lançamentos'}</small>
+                        </div>
+                        <span style={{ fontWeight: 800 }}>{brl(d.valor)}</span>
+                      </div>
+                    ))}
+                </>
+              )}
+
+              <h3 style={{ fontSize: 15, margin: '18px 0 8px' }}>Lançamentos</h3>
+
+              {despesas.length === 0 ? (
+                <div className="empty">Nenhuma despesa cadastrada.</div>
+              ) : (
+                despesas.map((d) => (
+                  <div className="adm-row" key={d.id}>
+                    <div className="info">
+                      <b>{d.descricao}</b>
+                      <small>
+                        {{
+                          alimentos: 'Alimentos',
+                          embalagens: 'Embalagens',
+                          bebidas: 'Bebidas',
+                          gas: 'Gás',
+                          limpeza: 'Limpeza',
+                          entrega: 'Entrega',
+                          outros: 'Outros',
+                        }[d.categoria] || d.categoria}
+                        {' · '}
+                        {String(d.data || '').split('-').reverse().join('/')}
+                      </small>
+                      {d.observacao && <small>{d.observacao}</small>}
+                    </div>
+                    <span style={{ fontWeight: 800 }}>{brl(d.valor)}</span>
+                    <button className="mini del" onClick={() => excluirDespesa(d.id)}>Excluir</button>
+                  </div>
+                ))
+              )}
+
+              <h2 className="sec">Dia a dia</h2>
+
+              {relatorio.porDia.length === 0 ? (
+                <div className="empty">Nenhuma venda neste período.</div>
+              ) : (
+                relatorio.porDia.map((l) => (
+                  <div className="adm-row" key={l.dia}>
+                    <div className="info">
+                      <b>{l.nome}</b>
+                      <small>
+                        {l.dia.split('-').reverse().join('/')} · {l.vendas}{' '}
+                        {l.vendas === 1 ? 'venda' : 'vendas'}
+                      </small>
+                    </div>
+                    <span style={{ fontWeight: 800, color: 'var(--brand)' }}>{brl(l.valor)}</span>
+                  </div>
+                ))
+              )}
+
+              <h2 className="sec">Por forma de pagamento</h2>
+
+              {Object.entries(relatorio.porPagamento).length === 0 ? (
+                <div className="empty">Sem pagamentos no período.</div>
+              ) : (
+                Object.entries(relatorio.porPagamento).map(([forma, d]) => (
+                  <div className="adm-row" key={forma}>
+                    <div className="info">
+                      <b style={{ textTransform: 'capitalize' }}>{forma}</b>
+                      <small>{d.vendas} {d.vendas === 1 ? 'venda' : 'vendas'}</small>
+                    </div>
+                    <span style={{ fontWeight: 800 }}>{brl(d.valor)}</span>
+                  </div>
+                ))
+              )}
+
+              {relatorio.aguardandoPagamento.vendas > 0 && (
+                <div className="alert" style={{ marginTop: 16 }}>
+                  <b>{relatorio.aguardandoPagamento.vendas} Pix ainda não confirmado(s)</b>{' '}
+                  somando {brl(relatorio.aguardandoPagamento.valor)}. Esses valores não entram no faturamento acima.
+                </div>
+              )}
+
+              {relatorio.cancelados > 0 && (
+                <p style={{ color: 'var(--muted)', fontSize: 13 }}>
+                  {relatorio.cancelados} pedido(s) cancelado(s) no período, fora da conta.
                 </p>
-              </>
-            )}
+              )}
+
+              <a
+                className="btn"
+                style={{ marginTop: 20 }}
+                href={`/api/admin/relatorio?periodo=${periodo}&formato=csv`}
+              >
+                Baixar planilha deste período
+              </a>
+
+              <p
+                style={{
+                  color: 'var(--muted)',
+                  fontSize: 12.5,
+                  marginTop: 10,
+                  textAlign: 'center',
+                }}
+              >
+                A planilha agora inclui o resumo de despesas e o resultado operacional.
+              </p>
+            </>
+          )}
         </div>
       )}
 
