@@ -194,17 +194,40 @@ export default function Loja({ config, produtos }) {
             </span>
 
             <span className="sep">•</span>
-            <span>{config.horario}</span>
+
+            <span className="status-info">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              {config.horario}
+            </span>
 
             {aberto && (
               <>
                 <span className="sep">•</span>
-                <span>Entrega em {config.tempo_entrega}</span>
+
+                <span className="status-info">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="7" cy="17" r="2.2" />
+                    <circle cx="17" cy="17" r="2.2" />
+                    <path d="M5 17H3l2-6h8l3 3h3l2 3h-2" />
+                    <path d="M10 11l2-4h3" />
+                  </svg>
+                  Entrega em {config.tempo_entrega}
+                </span>
               </>
             )}
 
             <span className="sep">•</span>
-            <span>Taxa {brl(config.taxa_entrega)}</span>
+
+            <span className="status-info">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 13l-7 7-9-9V4h7z" />
+                <circle cx="8" cy="8" r="1.5" />
+              </svg>
+              Taxa {brl(config.taxa_entrega)}
+            </span>
           </div>
         </div>
       </header>
