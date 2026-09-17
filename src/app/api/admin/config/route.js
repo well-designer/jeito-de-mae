@@ -13,6 +13,8 @@ export async function PUT(request) {
     return NextResponse.json({ erro: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
+  // parsed.data ja inclui banner_url, nota_media e total_avaliacoes
+  // quando enviados - so segue direto para o banco.
   const { data, error } = await supabaseAdmin()
     .from('config')
     .update({ ...parsed.data, atualizado_em: new Date().toISOString() })

@@ -213,3 +213,86 @@ src/
 supabase/schema.sql              tabelas, RLS, storage e cardápio inicial
 middleware.js                    bloqueia /admin sem sessão
 ```
+
+---
+
+## Atualização: banner, logo, preço com desconto e avaliação
+
+Essa leva de mudança é aditiva — não apaga nada do que já está rodando.
+Ordem segura para aplicar:
+
+1. **Rode a migração no Supabase primeiro.** Abra o SQL Editor e execute
+   `supabase/migration_2_banner_avaliacao.sql`. Ela só acrescenta colunas
+   (`banner_url`, `nota_media`, `total_avaliacoes`) — o site no ar continua
+   funcionando igual, porque o código antigo nem sabe que elas existem.
+2. **Suba o código numa branch, não direto na main:**
+   ```bash
+   git checkout -b banner-e-logo
+   git add .
+   git commit -m "Banner, logo, preco com desconto e avaliacao"
+   git push origin banner-e-logo
+   ```
+3. A Vercel gera uma URL de prévia para essa branch. Confira lá com calma.
+4. Satisfeito? Abra o Pull Request no GitHub e clique em **Merge**. Só nesse
+   momento o site principal (o que seus pais usam) atualiza.
+
+### O que mudou
+
+- **Logo**: `public/logo.png` — a logo que você mandou, já otimizada
+  (1,7 MB → 247 KB) para não pesar no carregamento. Aparece no cabeçalho
+  do site e sobreposta ao banner, igual ao efeito do iFood.
+- **Banner**: campo novo em Configurações → Banner do topo. Sobe a imagem
+  pelo próprio painel, tamanho recomendado 1200 × 400 px.
+- **Preço "de/por"**: no editor de cada item, o campo "De" é opcional —
+  preencha só quando o prato estiver com desconto. O site calcula e mostra
+  o percentual sozinho (ex.: -34%). O valor cobrado no pedido sempre usa o
+  "por", nunca o "de" — o desconto é só visual.
+- **Avaliação no topo**: nota e quantidade preenchidas manualmente em
+  Configurações (peguem do Google ou WhatsApp de vocês). Um sistema de
+  avaliação real, onde o próprio cliente avalia pelo site, é um recurso
+  maior — exige identificar quem já comprou e moderar comentários. Dá para
+  construir depois, como uma etapa separada.
+
+### Tipografia e emojis de placeholder
+
+Ainda não mexi nisso — me diga o nome da fonte (ou o estilo que você quer)
+e se prefere trocar o emoji de placeholder por um ícone neutro, que eu
+ajusto tudo numa passada só, na mesma branch.
+
+---
+
+## Atualização: tipografia e remoção total dos emojis
+
+- **Tipografia**: trocada para a pilha de fontes do sistema (`-apple-system,
+  BlinkMacSystemFont, 'Helvetica Neue', Helvetica, 'Segoe UI', Roboto, Arial`).
+  Em iPhone e Mac isso renderiza a **Helvetica Neue de verdade**, nativa do
+  aparelho — sem custo de licença e sem carregar arquivo de fonte externo.
+  Em Windows/Android cai num Arial muito parecido. O Google Fonts (Fraunces
+  + Inter) foi removido do projeto: o site ficou mais leve e a política de
+  segurança (CSP) mais enxuta, já que não depende mais de nenhum domínio
+  externo para fontes.
+  Se vocês comprarem a licença da Helvetica Now de verdade (Adobe Fonts ou
+  Monotype), mandem os arquivos `.woff2` (Regular e Bold) que eu hospedo
+  dentro do próprio projeto e troco a pilha por ela.
+- **Emojis**: removidos de toda a interface. Onde não há foto de um prato,
+  agora aparece um ícone de linha neutro (`IconePrato.jsx`); o mesmo vale
+  para o placeholder do banner (`IconeImagem.jsx`) e para a tela de pedido
+  confirmado, que ganhou um ícone de check no lugar da tigela.
+
+## Como publicar esta leva de mudanças
+
+Essa atualização é só de front-end — não mexe no banco, então não precisa
+rodar nada no Supabase. Suba assim:
+
+```bash
+# dentro da pasta do projeto, com os arquivos deste zip já sobrescritos
+git checkout -b visual-sem-emoji
+git add .
+git commit -m "Tipografia Helvetica e remocao dos emojis"
+git push origin visual-sem-emoji
+```
+
+A Vercel comenta automaticamente no push com o link de prévia (algo como
+`jeito-de-mae-git-visual-sem-emoji-SEU-USUARIO.vercel.app`). Abra esse link
+no celular pra ver como ficou. Gostou? Abra o Pull Request no GitHub e
+clique em **Merge** — só nesse momento o site principal atualiza.
