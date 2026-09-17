@@ -69,12 +69,8 @@ a{color:var(--brand)}
   font-size:13px;font-weight:600;text-decoration:none}
 .icon-btn:hover{background:rgba(255,255,255,.28)}
 .statusbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;position:relative;z-index:1;
-  background:rgba(0,0,0,.18);border-radius:14px;padding:11px 14px;font-size:13.5px}
-.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px}
-.dot.on{background:#46D07F;box-shadow:0 0 0 4px rgba(70,208,127,.25)}
-.dot.off{background:#FFB4B4;box-shadow:0 0 0 4px rgba(255,180,180,.2)}
-.status-pill{font-weight:700;display:flex;align-items:center}
-.sep{opacity:.4}
+  background:rgba(0,0,0,.18);border-radius:14px;padding:11px 14px;font-size:13.5px;color:#fff;
+  text-shadow:0 2px 4px rgba(0,0,0,.5)}
 
 .hoje{margin:18px auto 4px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
   padding:16px 18px;box-shadow:var(--shadow);display:flex;gap:14px;align-items:center}
