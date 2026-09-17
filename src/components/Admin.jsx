@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { brl, EMOJI, CATEGORIAS } from '@/lib/format';
+import { brl, CATEGORIAS } from '@/lib/format';
+import IconePrato from './IconePrato';
+import IconeImagem from './IconeImagem';
 
 const VAZIO = {
   nome: '', descricao: '', categoria: 'Prato do dia',
-  opcoes: [{ nome: 'Individual', preco: 0 }],
+  opcoes: [{ nome: 'Individual', preco: 0, precoDe: '' }],
   foto_url: null, ativo: true, destaque: false, ordem: 0,
 };
 
@@ -48,6 +50,9 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
         horario: novo.horario || '',
         tempo_entrega: novo.tempo_entrega || '',
         taxa_entrega: Number(novo.taxa_entrega) || 0,
+        banner_url: novo.banner_url || null,
+        nota_media: novo.nota_media === '' || novo.nota_media == null ? null : Number(novo.nota_media),
+        total_avaliacoes: Number(novo.total_avaliacoes) || 0,
       }),
     });
     if (!res.ok) avisar('Não foi possível salvar');
@@ -68,7 +73,16 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
     if (!p.nome.trim()) return avisar('Dê um nome ao item');
     const opcoes = p.opcoes
       .filter((o) => String(o.nome).trim())
-      .map((o) => ({ nome: String(o.nome).trim(), preco: Number(String(o.preco).replace(',', '.')) || 0 }));
+      .map((o) => {
+        const preco = Number(String(o.preco).replace(',', '.')) || 0;
+        const precoDeNum = Number(String(o.precoDe ?? '').replace(',', '.')) || 0;
+        return {
+          nome: String(o.nome).trim(),
+          preco,
+          // Só guarda "de" quando faz sentido (maior que o preço real).
+          ...(precoDeNum > preco ? { precoDe: precoDeNum } : {}),
+        };
+      });
     if (!opcoes.length) return avisar('Informe ao menos um tamanho e preço');
 
     setSalvando(true);
@@ -112,6 +126,18 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
     if (!res.ok) return avisar(d.erro || 'Falha no upload');
     setEditando((p) => ({ ...p, foto_url: d.url }));
     avisar('Foto atualizada');
+  }
+
+  async function enviarBanner(file) {
+    if (!file) return;
+    avisar('Enviando banner...');
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) return avisar(d.erro || 'Falha no upload');
+    await salvarConfig({ banner_url: d.url });
+    avisar('Banner atualizado');
   }
 
   // Carrega o relatorio quando a aba Financeiro abre ou o periodo muda
@@ -237,7 +263,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
           {produtos.map((p) => (
             <div className="adm-row" key={p.id}>
               <div className="th">
-                {p.foto_url ? <img src={p.foto_url} alt="" /> : (EMOJI[p.categoria] || '🍽️')}
+                {p.foto_url ? <img src={p.foto_url} alt="" /> : <IconePrato />}
               </div>
               <div className="info">
                 <b>{p.nome}{p.ativo === false && <span style={{ color: 'var(--muted)', fontWeight: 400 }}> (oculto)</span>}</b>
@@ -266,7 +292,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
 
           <div className="adm-row" style={{ marginBottom: 16 }}>
             <div className="th" style={{ width: 70, height: 70, fontSize: 28 }}>
-              {editando.foto_url ? <img src={editando.foto_url} alt="" /> : (EMOJI[editando.categoria] || '🍽️')}
+              {editando.foto_url ? <img src={editando.foto_url} alt="" /> : <IconePrato tam={28} />}
             </div>
             <div className="info">
               <b>Foto do produto</b>
@@ -299,6 +325,10 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
           </select>
 
           <label className="f">Tamanhos e preços</label>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '-4px 0 10px' }}>
+            "De" é opcional — preencha só quando o item estiver em promoção.
+            Deixe vazio no dia a dia.
+          </p>
           {editando.opcoes.map((o, i) => (
             <div className="opt-edit" key={i}>
               <input className="inp" value={o.nome} placeholder="Individual / Grande / 300ml"
@@ -307,8 +337,15 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                   opcoes[i] = { ...opcoes[i], nome: e.target.value };
                   setEditando({ ...editando, opcoes });
                 }} />
-              <input className="inp" style={{ maxWidth: 110 }} inputMode="decimal" value={o.preco}
-                placeholder="0,00"
+              <input className="inp" style={{ maxWidth: 90 }} inputMode="decimal"
+                value={o.precoDe ?? ''} placeholder="De (opc.)"
+                onChange={(e) => {
+                  const opcoes = [...editando.opcoes];
+                  opcoes[i] = { ...opcoes[i], precoDe: e.target.value };
+                  setEditando({ ...editando, opcoes });
+                }} />
+              <input className="inp" style={{ maxWidth: 90 }} inputMode="decimal" value={o.preco}
+                placeholder="Por 0,00"
                 onChange={(e) => {
                   const opcoes = [...editando.opcoes];
                   opcoes[i] = { ...opcoes[i], preco: e.target.value };
@@ -322,7 +359,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
             </div>
           ))}
           <button className="mini" onClick={() => setEditando({
-            ...editando, opcoes: [...editando.opcoes, { nome: '', preco: 0 }],
+            ...editando, opcoes: [...editando.opcoes, { nome: '', preco: 0, precoDe: '' }],
           })}>+ Adicionar tamanho</button>
 
           <label className="opt" style={{ marginTop: 18 }}
@@ -374,7 +411,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                   }}>
                     <small style={{ color: 'var(--muted)', fontSize: 12, textTransform: 'uppercase',
                       letterSpacing: .4, fontWeight: 700 }}>{rotulo}</small>
-                    <div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 900,
+                    <div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 700,
                       color: 'var(--brand)', marginTop: 2 }}>{valor}</div>
                   </div>
                 ))}
@@ -385,7 +422,6 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                 ? <div className="empty">Nenhuma venda neste período.</div>
                 : relatorio.porDia.map((l) => (
                   <div className="adm-row" key={l.dia}>
-                    <div className="th">📅</div>
                     <div className="info">
                       <b>{l.nome}</b>
                       <small>{l.dia.split('-').reverse().join('/')} · {l.vendas} {l.vendas === 1 ? 'venda' : 'vendas'}</small>
@@ -399,7 +435,6 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                 ? <div className="empty">Sem pagamentos no período.</div>
                 : Object.entries(relatorio.porPagamento).map(([forma, d]) => (
                   <div className="adm-row" key={forma}>
-                    <div className="th">{forma === 'pix' ? '⚡' : '💵'}</div>
                     <div className="info">
                       <b style={{ textTransform: 'capitalize' }}>{forma}</b>
                       <small>{d.vendas} {d.vendas === 1 ? 'venda' : 'vendas'}</small>
@@ -435,7 +470,47 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
       {/* --------------------------- CONFIGURAÇÕES -------------------------- */}
       {aba === 'config' && (
         <div>
-          <label className="f">Prato do dia (destaque no topo)</label>
+          <label className="f">Banner do topo (estilo iFood)</label>
+          <div className="adm-row" style={{ marginBottom: 4 }}>
+            <div className="th" style={{ width: 70, height: 46, borderRadius: 8 }}>
+              {config.banner_url ? <img src={config.banner_url} alt="" /> : <IconeImagem />}
+            </div>
+            <div className="info">
+              <b>Imagem de fundo do cabeçalho</b>
+              <small>Recomendado 1200 × 400 px, JPG ou WebP, até 6 MB</small>
+            </div>
+            <label className="mini" style={{ cursor: 'pointer' }}>
+              Enviar
+              <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }}
+                onChange={(e) => enviarBanner(e.target.files?.[0])} />
+            </label>
+            {config.banner_url && (
+              <button className="mini del" onClick={() => salvarConfig({ banner_url: null })}>
+                Remover
+              </button>
+            )}
+          </div>
+
+          <label className="f" style={{ marginTop: 22 }}>Avaliação exibida no topo</label>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '-4px 0 10px' }}>
+            Preenchimento manual — usem a nota que já têm no Google ou WhatsApp.
+            Deixe a nota em branco para não mostrar nada.
+          </p>
+          <div className="row">
+            <div>
+              <label className="f">Nota (0 a 5)</label>
+              <input className="inp" inputMode="decimal" value={config.nota_media ?? ''}
+                placeholder="Ex.: 4,8"
+                onChange={(e) => setConfig({ ...config, nota_media: e.target.value })} />
+            </div>
+            <div>
+              <label className="f">Quantidade de avaliações</label>
+              <input className="inp" inputMode="numeric" value={config.total_avaliacoes ?? 0}
+                onChange={(e) => setConfig({ ...config, total_avaliacoes: e.target.value })} />
+            </div>
+          </div>
+
+          <label className="f" style={{ marginTop: 22 }}>Prato do dia (destaque no topo)</label>
           <input className="inp" value={config.prato_do_dia || ''}
             onChange={(e) => setConfig({ ...config, prato_do_dia: e.target.value })} />
 

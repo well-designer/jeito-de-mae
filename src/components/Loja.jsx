@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { brl, EMOJI, CATEGORIAS } from '@/lib/format';
+import { brl, CATEGORIAS } from '@/lib/format';
+import IconePrato from './IconePrato';
+import IconeSucesso from './IconeSucesso';
 
 export default function Loja({ config, produtos }) {
   const [catAtiva, setCatAtiva] = useState('Todos');
@@ -109,17 +111,30 @@ export default function Loja({ config, produtos }) {
   const Foto = ({ p, tam = 34 }) =>
     p?.foto_url
       ? <img src={p.foto_url} alt={p.nome} loading="lazy" />
-      : <span style={{ fontSize: tam }}>{EMOJI[p?.categoria] || '🍽️'}</span>;
+      : <IconePrato tam={tam} />;
 
   return (
     <>
-      <header className="topbar">
+      <header className={`topbar ${config.banner_url ? 'tem-banner' : ''}`}>
+        {config.banner_url && (
+          <>
+            <img className="banner-img" src={config.banner_url} alt="" />
+            <div className="banner-fade" />
+          </>
+        )}
         <div className="wrap">
           <div className="topbar-in">
-            <div className="logo">JM</div>
+            <div className="logo"><img src="/logo.png" alt="Jeito de Mãe" /></div>
             <div className="brand">
               <h1>Jeito de Mãe</h1>
               <p>Delícias Caseiras</p>
+              {!!config.nota_media && (
+                <div className="rating">
+                  <span className="estrela">★</span>
+                  {Number(config.nota_media).toFixed(1)}
+                  <small>({config.total_avaliacoes} avaliações)</small>
+                </div>
+              )}
             </div>
           </div>
           <div className="statusbar">
@@ -153,7 +168,7 @@ export default function Loja({ config, produtos }) {
             {catsDisponiveis.map((c) => (
               <button key={c} className={`cat ${c === catAtiva ? 'active' : ''}`}
                 onClick={() => setCatAtiva(c)}>
-                {c === 'Todos' ? 'Todos' : `${EMOJI[c] || ''} ${c}`}
+                {c}
               </button>
             ))}
           </div>
@@ -166,10 +181,16 @@ export default function Loja({ config, produtos }) {
           if (!itens.length) return null;
           return (
             <section key={c}>
-              <h2 className="sec">{EMOJI[c] || ''} {c}</h2>
+              <h2 className="sec">{c}</h2>
               <div className="grid">
                 {itens.map((p) => {
-                  const menor = Math.min(...(p.opcoes || []).map((o) => Number(o.preco)));
+                  const opcoes = p.opcoes || [];
+                  const principal = opcoes.reduce(
+                    (m, o) => (Number(o.preco) < Number(m.preco) ? o : m), opcoes[0] || { preco: 0 }
+                  );
+                  const temDesconto = principal?.precoDe > principal?.preco;
+                  const percentual = temDesconto
+                    ? Math.round(100 - (principal.preco / principal.precoDe) * 100) : 0;
                   return (
                     <button key={p.id} className="card" onClick={() => abrirProduto(p)}>
                       <div className="thumb"><Foto p={p} /></div>
@@ -178,8 +199,14 @@ export default function Loja({ config, produtos }) {
                         <h3>{p.nome}</h3>
                         <p>{p.descricao}</p>
                         <div className="price">
-                          {(p.opcoes || []).length > 1 && <small>a partir de </small>}
-                          {brl(menor)}
+                          {opcoes.length > 1 && <small>a partir de </small>}
+                          {brl(principal?.preco)}
+                          {temDesconto && (
+                            <>
+                              <span className="de">{brl(principal.precoDe)}</span>
+                              <span className="desconto-selo">-{percentual}%</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -233,7 +260,12 @@ export default function Loja({ config, produtos }) {
                       onClick={() => setOpcaoSel(i)}>
                       <input type="radio" readOnly checked={i === opcaoSel} />
                       <span className="on">{o.nome}</span>
-                      <span className="op">{brl(o.preco)}</span>
+                      <span className="op">
+                        {o.precoDe > o.preco && (
+                          <span className="de" style={{ marginRight: 6 }}>{brl(o.precoDe)}</span>
+                        )}
+                        {brl(o.preco)}
+                      </span>
                     </label>
                   ))}
                   <label className="f">Alguma observação?</label>
@@ -418,7 +450,9 @@ export default function Loja({ config, produtos }) {
                   <button className="close" onClick={() => setModal(null)}>✕</button>
                 </div>
                 <div className="sheet-body" style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 56, margin: '8px 0' }}>🍲</div>
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+                    <IconeSucesso />
+                  </div>
                   <h3 style={{ fontFamily: 'var(--serif)', fontSize: 24, margin: '0 0 6px' }}>
                     Obrigado, {(form.nome || '').split(' ')[0]}!
                   </h3>

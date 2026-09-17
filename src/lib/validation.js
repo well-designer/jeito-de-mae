@@ -26,6 +26,9 @@ export const pedidoSchema = z.object({
 export const opcaoSchema = z.object({
   nome: z.string().trim().min(1).max(40),
   preco: z.number().min(0).max(9999),
+  // Preco "de" opcional, so para mostrar o risco de desconto. Nunca e
+  // usado para calcular o total cobrado - isso sempre usa "preco".
+  precoDe: z.number().min(0).max(9999).nullable().optional(),
 });
 
 export const produtoSchema = z.object({
@@ -48,6 +51,9 @@ export const configSchema = z.object({
   horario: z.string().max(80).optional().default(''),
   tempo_entrega: z.string().max(40).optional().default(''),
   taxa_entrega: z.number().min(0).max(200),
+  banner_url: z.string().url().nullable().optional(),
+  nota_media: z.number().min(0).max(5).nullable().optional(),
+  total_avaliacoes: z.number().int().min(0).max(999999).optional().default(0),
 });
 
 export const statusPedidoSchema = z.object({
