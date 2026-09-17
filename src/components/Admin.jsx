@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { brl, CATEGORIAS } from '@/lib/format';
 import IconePrato from './IconePrato';
 import IconeImagem from './IconeImagem';
@@ -49,6 +49,7 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
   const [editandoCupom, setEditandoCupom] = useState(null);
   const [carregandoCupons, setCarregandoCupons] = useState(false);
   const [salvandoCupom, setSalvandoCupom] = useState(false);
+  const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
 
   function avisar(m) {
     setToast(m);
@@ -561,6 +562,18 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
     (p) => p.status === 'novo'
   ).length;
 
+  const pedidosEmAndamento = pedidos.filter(
+    (p) => !['concluido', 'cancelado'].includes(p.status)
+  );
+
+  const pedidosFinalizados = pedidos.filter(
+    (p) => ['concluido', 'cancelado'].includes(p.status)
+  );
+
+  const pedidosVisiveis = mostrarFinalizados
+    ? [...pedidosEmAndamento, ...pedidosFinalizados]
+    : pedidosEmAndamento;
+
   return (
     <div className="admin-wrap">
 
@@ -714,7 +727,49 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
               Nenhum pedido ainda.
             </div>
           )
-          : pedidos.map((p) => {
+          : (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 14,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <h2 className="sec" style={{ margin: 0 }}>
+                    Pedidos em andamento
+                  </h2>
+                  <small style={{ color: 'var(--muted)' }}>
+                    {pedidosEmAndamento.length === 1
+                      ? '1 pedido precisa de atenção'
+                      : `${pedidosEmAndamento.length} pedidos precisam de atenção`}
+                  </small>
+                </div>
+
+                {pedidosFinalizados.length > 0 && (
+                  <button
+                    type="button"
+                    className="mini"
+                    onClick={() => setMostrarFinalizados((v) => !v)}
+                  >
+                    {mostrarFinalizados
+                      ? 'Ocultar finalizados'
+                      : `Ver finalizados (${pedidosFinalizados.length})`}
+                  </button>
+                )}
+              </div>
+
+              {pedidosEmAndamento.length === 0 && (
+                <div className="empty" style={{ marginBottom: 14 }}>
+                  Nenhum pedido em andamento.
+                </div>
+              )}
+
+              {pedidosVisiveis.map((p, indice) => {
               const prox = {
                 novo: 'confirmado',
                 confirmado: 'preparo',
@@ -745,9 +800,32 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
               }[p.status] || p.status;
 
               return (
+                <Fragment key={p.id}>
+                  {mostrarFinalizados &&
+                    pedidosFinalizados.length > 0 &&
+                    indice === pedidosEmAndamento.length && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          margin: '24px 0 12px',
+                        }}
+                      >
+                        <div>
+                          <h2 className="sec" style={{ margin: 0 }}>
+                            Finalizados
+                          </h2>
+                          <small style={{ color: 'var(--muted)' }}>
+                            Concluídos e cancelados ficam separados dos pedidos ativos.
+                          </small>
+                        </div>
+                      </div>
+                    )}
+
                 <div
                   className="ped"
-                  key={p.id}
                 >
                   <div className="ped-top">
                     <span className="code">
@@ -1037,8 +1115,11 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                     )}
                   </div>
                 </div>
+                </Fragment>
               );
-            })
+            })}
+            </>
+          )
       )}
 
       {/* CARDÁPIO */}
