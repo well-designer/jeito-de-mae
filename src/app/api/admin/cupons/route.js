@@ -126,7 +126,8 @@ export async function POST(request) {
 }
 
 /**
- * Exclui um cupom.
+ * Exclui um cupom somente se ele nunca tiver sido utilizado.
+ * Cupons com histórico de uso devem ser desativados.
  */
 export async function DELETE(request) {
   if (!(await exigirAdmin())) {
@@ -145,7 +146,49 @@ export async function DELETE(request) {
     );
   }
 
-  const { error } = await supabaseAdmin()
+  const sb = supabaseAdmin();
+
+  /*
+   * Verifica se o cupom já foi utilizado em algum pedido.
+   * Se houver histórico, não permitimos a exclusão para
+   * preservar a rastreabilidade dos pedidos.
+   */
+  const {
+    count: totalUsos,
+    error: erroUsos,
+  } = await sb
+    .from('cupom_usos')
+    .select('id', {
+      count: 'exact',
+      head: true,
+    })
+    .eq('cupom_id', id);
+
+  if (erroUsos) {
+    console.error(
+      '[cupons] verificar usos antes de excluir:',
+      erroUsos
+    );
+
+    return NextResponse.json(
+      {
+        erro: 'falha ao verificar o historico do cupom',
+      },
+      { status: 500 }
+    );
+  }
+
+  if ((totalUsos || 0) > 0) {
+    return NextResponse.json(
+      {
+        erro:
+          'Este cupom ja foi utilizado e nao pode ser excluido. Desative o cupom para preservar o historico.',
+      },
+      { status: 409 }
+    );
+  }
+
+  const { error } = await sb
     .from('cupons')
     .delete()
     .eq('id', id);
