@@ -12,10 +12,35 @@ export default async function Home() {
   const sb = supabaseAdmin();
 
   const [{ data: config }, { data: produtos }] = await Promise.all([
-    sb.from('config').select('*').eq('id', 1).single(),
-    sb.from('produtos').select('id, nome, descricao, categoria, opcoes, foto_url, destaque, ordem')
-      .eq('ativo', true).order('ordem'),
+    sb
+      .from('config')
+      .select('*')
+      .eq('id', 1)
+      .single(),
+
+    sb
+      .from('produtos')
+      .select(`
+        id,
+        nome,
+        descricao,
+        categoria,
+        opcoes,
+        foto_url,
+        destaque,
+        ordem,
+        dias_semana,
+        adicionais,
+        perguntar_talher
+      `)
+      .eq('ativo', true)
+      .order('ordem'),
   ]);
 
-  return <Loja config={config || {}} produtos={produtos || []} />;
+  return (
+    <Loja
+      config={config || {}}
+      produtos={produtos || []}
+    />
+  );
 }
