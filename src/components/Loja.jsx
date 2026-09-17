@@ -167,7 +167,6 @@ export default function Loja({ config, produtos }) {
         Entrega em {config.tempo_entrega}
       </span>
     </>
-  )}
 
   <span className="sep">•</span>
 
