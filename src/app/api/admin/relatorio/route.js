@@ -46,15 +46,13 @@ function nomeDoDia(chave) {
   ];
 }
 
-/**
- * Converte uma data local AAAA-MM-DD para uma chave
- * comparável com a coluna "data" das despesas.
- */
 function chaveDataLocal(data) {
   const ano = data.getFullYear();
+
   const mes = String(
     data.getMonth() + 1
   ).padStart(2, '0');
+
   const dia = String(
     data.getDate()
   ).padStart(2, '0');
@@ -62,10 +60,6 @@ function chaveDataLocal(data) {
   return `${ano}-${mes}-${dia}`;
 }
 
-/**
- * Intervalo pedido pelo painel,
- * sempre alinhado a semana que começa na segunda.
- */
 function intervalo(periodo) {
   const agoraLocal = new Date(
     new Date().toLocaleString(
@@ -139,9 +133,9 @@ function montarRelatorio(
   despesas
 ) {
   /*
-   * Venda considerada no relatório:
+   * Venda considerada:
    * - não cancelada
-   * - já paga
+   * - paga
    * OU pagamento em dinheiro
    */
   const vendas = pedidos.filter(
@@ -177,6 +171,7 @@ function montarRelatorio(
       };
 
     linha.vendas += 1;
+
     linha.valor += Number(
       p.total || 0
     );
@@ -194,10 +189,15 @@ function montarRelatorio(
         valor: 0,
       };
 
-    porPagamento[forma].vendas += 1;
+    porPagamento[
+      forma
+    ].vendas += 1;
 
-    porPagamento[forma].valor +=
-      Number(p.total || 0);
+    porPagamento[
+      forma
+    ].valor += Number(
+      p.total || 0
+    );
   }
 
   const total = vendas.reduce(
@@ -206,10 +206,37 @@ function montarRelatorio(
     0
   );
 
-  const entregas = vendas.filter(
-    (p) =>
-      p.tipo === 'entrega'
-  ).length;
+  /*
+   * Soma dos descontos efetivamente
+   * concedidos nas vendas consideradas.
+   *
+   * Não será subtraído novamente do
+   * resultado operacional, pois p.total
+   * já contém o valor final com desconto.
+   */
+  const totalDescontos =
+    vendas.reduce(
+      (s, p) =>
+        s +
+        Number(
+          p.desconto || 0
+        ),
+      0
+    );
+
+  const pedidosComDesconto =
+    vendas.filter(
+      (p) =>
+        Number(
+          p.desconto || 0
+        ) > 0
+    ).length;
+
+  const entregas =
+    vendas.filter(
+      (p) =>
+        p.tipo === 'entrega'
+    ).length;
 
   /*
    * DESPESAS
@@ -229,10 +256,12 @@ function montarRelatorio(
         categoria
       ] = {
         categoria,
+
         nome:
           CATEGORIAS_DESPESA[
             categoria
           ] || categoria,
+
         quantidade: 0,
         valor: 0,
       };
@@ -260,17 +289,16 @@ function montarRelatorio(
   const totalDespesas =
     despesas.reduce(
       (s, d) =>
-        s + Number(d.valor || 0),
+        s +
+        Number(
+          d.valor || 0
+        ),
       0
     );
 
   /*
-   * Resultado operacional simples:
-   * vendas consideradas - despesas cadastradas.
-   *
-   * Não chamamos isso de lucro líquido,
-   * pois não inclui necessariamente todos
-   * os custos, impostos e demais despesas.
+   * O total das vendas já é líquido
+   * dos cupons concedidos.
    */
   const resultadoOperacional =
     total - totalDespesas;
@@ -283,6 +311,13 @@ function montarRelatorio(
       Number(
         total.toFixed(2)
       ),
+
+    totalDescontos:
+      Number(
+        totalDescontos.toFixed(2)
+      ),
+
+    pedidosComDesconto,
 
     ticketMedio:
       vendas.length
@@ -302,8 +337,7 @@ function montarRelatorio(
     cancelados:
       pedidos.filter(
         (p) =>
-          p.status ===
-          'cancelado'
+          p.status === 'cancelado'
       ).length,
 
     aguardandoPagamento: {
@@ -362,11 +396,6 @@ function montarRelatorio(
   };
 }
 
-/**
- * CSV com ; e BOM:
- * abre corretamente no Excel
- * e no Google Sheets em português.
- */
 function gerarCSV(
   rel,
   periodo
@@ -418,8 +447,7 @@ function gerarCSV(
         n(l.valor),
         n(
           l.vendas
-            ? l.valor /
-                l.vendas
+            ? l.valor / l.vendas
             : 0
         ),
       ]
@@ -444,6 +472,16 @@ function gerarCSV(
     [
       'Faturamento',
       n(rel.totalValor),
+    ],
+
+    [
+      'Descontos concedidos',
+      n(rel.totalDescontos),
+    ],
+
+    [
+      'Pedidos com desconto',
+      rel.pedidosComDesconto,
     ],
 
     [
@@ -580,7 +618,7 @@ export async function GET(
     supabaseAdmin()
       .from('pedidos')
       .select(
-        'total, pagamento, status, status_pagamento, tipo, criado_em'
+        'total, desconto, pagamento, status, status_pagamento, tipo, criado_em'
       )
       .gte(
         'criado_em',
@@ -600,9 +638,6 @@ export async function GET(
 
   /*
    * DESPESAS
-   *
-   * A coluna é DATE, então usamos
-   * AAAA-MM-DD em vez de timestamp.
    */
   const inicioDespesa =
     chaveDataLocal(inicio);
@@ -667,10 +702,8 @@ export async function GET(
 
   const rel =
     montarRelatorio(
-      pedidosResultado.data ||
-        [],
-      despesasResultado.data ||
-        []
+      pedidosResultado.data || [],
+      despesasResultado.data || []
     );
 
   if (
