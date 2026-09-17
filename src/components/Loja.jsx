@@ -338,10 +338,6 @@ export default function Loja({ config, produtos }) {
                       className="card"
                       onClick={() => abrirProduto(p)}
                     >
-                      <div className="thumb">
-                        <Foto p={p} />
-                      </div>
-
                       <div className="card-body">
                         {p.destaque && (
                           <span className="tag">Prato do dia</span>
@@ -369,6 +365,16 @@ export default function Loja({ config, produtos }) {
                           )}
                         </div>
                       </div>
+
+                      {p.foto_url && (
+                        <div className="thumb card-photo">
+                          <img
+                            src={p.foto_url}
+                            alt={p.nome}
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
                     </button>
                   );
                 })}
