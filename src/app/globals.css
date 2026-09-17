@@ -248,3 +248,117 @@ footer{text-align:center;color:var(--muted);font-size:12.5px;padding:34px 16px 1
 .login-card{max-width:400px;margin:70px auto;background:var(--surface);border:1px solid var(--line);
   border-radius:20px;padding:28px;box-shadow:var(--shadow)}
 .admin-wrap{max-width:900px;margin:0 auto;padding:24px 16px}
+
+/* =========================================================
+   REFINAMENTO FINAL DO CABEÇALHO - MOBILE
+   ========================================================= */
+
+@media (max-width:700px){
+
+  /* Banner mais compacto */
+  .banner-img{
+    width:100%;
+    height:145px;
+    object-fit:cover;
+    object-position:center;
+  }
+
+  /* Aproxima logo/nome do banner */
+  .topbar.tem-banner .topbar-in{
+    margin-top:-26px;
+    padding-top:0;
+    padding-bottom:10px;
+    gap:12px;
+    align-items:center;
+  }
+
+  /* Logo compacta sem cortar */
+  .topbar.tem-banner .logo{
+    width:76px;
+    height:76px;
+    flex:0 0 76px;
+    padding:5px;
+    border-radius:18px;
+    border:2px solid #541903;
+    background:#541903;
+    box-shadow:0 6px 18px rgba(0,0,0,.24);
+  }
+
+  .topbar.tem-banner .logo img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+  }
+
+  /* Nome da marca */
+  .topbar.tem-banner .brand h1{
+    font-size:21px;
+    line-height:1.1;
+    letter-spacing:-.4px;
+  }
+
+  .topbar.tem-banner .brand p{
+    margin-top:4px;
+    font-size:11px;
+    line-height:1.2;
+    letter-spacing:.5px;
+  }
+
+  /* Barra de informações */
+  .statusbar{
+    margin-top:8px;
+    margin-bottom:12px;
+    padding:10px 12px;
+    gap:7px 9px;
+    border-radius:16px;
+    background:rgba(45,10,8,.48);
+    font-size:12.5px;
+    line-height:1.25;
+    text-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+
+  .status-pill{
+    display:flex;
+    align-items:center;
+    white-space:nowrap;
+  }
+
+  /* Horário / entrega / taxa */
+  .status-info{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+
+  /* Ícones menores e delicados */
+  .status-info svg{
+    width:16px;
+    height:16px;
+    flex:0 0 16px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  /* Bolinha verde */
+  .dot{
+    width:8px;
+    height:8px;
+    margin-right:6px;
+  }
+
+  /* Separadores */
+  .statusbar .sep{
+    opacity:.45;
+    font-size:11px;
+  }
+
+  /* Categorias mais próximas do cabeçalho */
+  .cats{
+    margin-top:0;
+    padding-top:11px;
+  }
+}
