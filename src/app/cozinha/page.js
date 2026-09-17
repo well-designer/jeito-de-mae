@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { exigirAdmin } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import Cozinha from '@/components/Cozinha';
+import Cozinha from '@/components/cozinha';
 
 export const dynamic = 'force-dynamic';
 
