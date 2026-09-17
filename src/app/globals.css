@@ -27,13 +27,41 @@ a{color:var(--brand)}
 .wrap{max-width:960px;margin:0 auto;padding:0 16px}
 
 .topbar{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--brand-dark) 0%,var(--brand) 55%,var(--terracota) 130%)}
+
 .topbar.tem-banner{padding-bottom:0}
-.banner-img{width:100%;height:200px;object-fit:cover;display:block}
-.banner-fade{position:absolute;left:0;right:0;bottom:0;height:90px;
-  background:linear-gradient(to top, rgba(0,0,0,.55), transparent)}
-.topbar-in{display:flex;align-items:flex-end;gap:14px;position:relative;z-index:1;
-  padding:18px 0 16px}
-.topbar.tem-banner .topbar-in{padding-top:0;margin-top:-38px}
+
+.banner-img{
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  object-position:center;
+  display:block
+}
+
+.banner-fade{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:110px;
+  background:linear-gradient(to top,rgba(0,0,0,.65),rgba(0,0,0,.15),transparent)
+}
+
+.topbar-in{
+  display:flex;
+  align-items:flex-end;
+  gap:14px;
+  position:relative;
+  z-index:1;
+  padding:18px 0 16px;
+  color:#fff;
+  text-shadow:0 2px 4px rgba(0,0,0,.5)
+}
+
+.topbar.tem-banner .topbar-in{
+  padding-top:0;
+  margin-top:-38px
+}
 .logo{width:56px;height:56px;border-radius:18px;flex:0 0 auto;background:#fff;color:var(--brand-dark);
   display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:22px;
   box-shadow:0 6px 18px rgba(0,0,0,.2);overflow:hidden}
