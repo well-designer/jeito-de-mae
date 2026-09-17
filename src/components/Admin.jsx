@@ -33,6 +33,44 @@ function dataParaInput(valor) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function horarioEtapa(valor) {
+  if (!valor) return '—';
+
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '—';
+
+  return d.toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function minutosEntre(inicio, fim) {
+  if (!inicio || !fim) return null;
+
+  const a = new Date(inicio).getTime();
+  const b = new Date(fim).getTime();
+
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) {
+    return null;
+  }
+
+  return Math.round((b - a) / 60000);
+}
+
+function duracaoTexto(minutos) {
+  if (minutos == null) return '';
+
+  if (minutos < 1) return 'menos de 1 min';
+  if (minutos < 60) return `${minutos} min`;
+
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+
+  return resto ? `${horas}h ${resto}min` : `${horas}h`;
+}
+
 export default function Admin({ configInicial, produtosIniciais, pedidosIniciais, email }) {
   const [config, setConfig] = useState(configInicial);
   const [produtos, setProdutos] = useState(produtosIniciais);
@@ -1139,6 +1177,153 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                       </dd>
                     </div>
                   </dl>
+
+                  {(p.confirmado_em ||
+                    p.preparo_em ||
+                    p.pronto_em ||
+                    p.concluido_em) && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 12,
+                        background: 'var(--surface-2)',
+                        border: '1px solid var(--line)',
+                      }}
+                    >
+                      <b
+                        style={{
+                          display: 'block',
+                          marginBottom: 8,
+                          fontSize: 13,
+                        }}
+                      >
+                        Histórico operacional
+                      </b>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gap: 5,
+                          fontSize: 12.5,
+                        }}
+                      >
+                        <div>
+                          Pedido realizado: <b>{horarioEtapa(p.criado_em)}</b>
+                        </div>
+
+                        {p.confirmado_em && (
+                          <div>
+                            Confirmado: <b>{horarioEtapa(p.confirmado_em)}</b>
+                            {' · '}
+                            espera de{' '}
+                            <b>
+                              {duracaoTexto(
+                                minutosEntre(
+                                  p.criado_em,
+                                  p.confirmado_em
+                                )
+                              )}
+                            </b>
+                          </div>
+                        )}
+
+                        {p.preparo_em && (
+                          <div>
+                            Início do preparo: <b>{horarioEtapa(p.preparo_em)}</b>
+                            {' · '}
+                            {p.confirmado_em ? (
+                              <>
+                                <b>
+                                  {duracaoTexto(
+                                    minutosEntre(
+                                      p.confirmado_em,
+                                      p.preparo_em
+                                    )
+                                  )}
+                                </b>{' '}
+                                após confirmação
+                              </>
+                            ) : (
+                              <>
+                                <b>
+                                  {duracaoTexto(
+                                    minutosEntre(
+                                      p.criado_em,
+                                      p.preparo_em
+                                    )
+                                  )}
+                                </b>{' '}
+                                após o pedido
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {p.pronto_em && (
+                          <div>
+                            {p.tipo === 'retirada'
+                              ? 'Pronto para retirada'
+                              : 'Saiu para entrega'}
+                            : <b>{horarioEtapa(p.pronto_em)}</b>
+                            {' · '}
+                            {p.preparo_em && (
+                              <>
+                                preparo de{' '}
+                                <b>
+                                  {duracaoTexto(
+                                    minutosEntre(
+                                      p.preparo_em,
+                                      p.pronto_em
+                                    )
+                                  )}
+                                </b>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {p.concluido_em && (
+                          <div>
+                            Concluído: <b>{horarioEtapa(p.concluido_em)}</b>
+                            {p.pronto_em && (
+                              <>
+                                {' · '}
+                                {p.tipo === 'retirada'
+                                  ? 'retirada em '
+                                  : 'entrega em '}
+                                <b>
+                                  {duracaoTexto(
+                                    minutosEntre(
+                                      p.pronto_em,
+                                      p.concluido_em
+                                    )
+                                  )}
+                                </b>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {p.concluido_em && (
+                          <div
+                            style={{
+                              marginTop: 3,
+                              fontWeight: 800,
+                            }}
+                          >
+                            Tempo total:{' '}
+                            {duracaoTexto(
+                              minutosEntre(
+                                p.criado_em,
+                                p.concluido_em
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div
                     style={{
