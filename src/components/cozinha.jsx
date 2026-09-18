@@ -217,6 +217,25 @@ export default function Cozinha({
   ) {
     if (!proximo) return;
 
+    const patch = {
+      id: pedido.id,
+      status: proximo.status,
+    };
+
+    if (
+      proximo.status === 'concluido' &&
+      pedido.pagamento === 'dinheiro' &&
+      pedido.status_pagamento !== 'pago'
+    ) {
+      const recebeu = window.confirm(
+        'O pagamento em dinheiro foi recebido?\n\nOK = Sim, marcar como pago\nCancelar = Ainda não'
+      );
+
+      if (recebeu) {
+        patch.status_pagamento = 'pago';
+      }
+    }
+
     setAlterando(pedido.id);
     setErro('');
 
@@ -229,16 +248,20 @@ export default function Cozinha({
             'Content-Type':
               'application/json',
           },
-          body: JSON.stringify({
-            id: pedido.id,
-            status: proximo.status,
-          }),
+          body: JSON.stringify(patch),
         }
       );
 
       if (!res.ok) {
         throw new Error();
       }
+
+      const dados = await res.json();
+      const pedidoAtualizado =
+        dados.pedido || {
+          ...pedido,
+          ...patch,
+        };
 
       if (
         proximo.status ===
@@ -254,11 +277,7 @@ export default function Cozinha({
         setPedidos((lista) =>
           lista.map((p) =>
             p.id === pedido.id
-              ? {
-                  ...p,
-                  status:
-                    proximo.status,
-                }
+              ? pedidoAtualizado
               : p
           )
         );
