@@ -71,6 +71,35 @@ function duracaoTexto(minutos) {
   return resto ? `${horas}h ${resto}min` : `${horas}h`;
 }
 
+function duracaoMediaTexto(minutos) {
+  if (
+    minutos == null ||
+    !Number.isFinite(Number(minutos))
+  ) {
+    return '—';
+  }
+
+  const total = Number(minutos);
+
+  if (total < 1) {
+    return 'menos de 1 min';
+  }
+
+  if (total < 60) {
+    const arredondado =
+      Math.round(total * 10) / 10;
+
+    return `${String(arredondado).replace('.', ',')} min`;
+  }
+
+  const horas = Math.floor(total / 60);
+  const minutosRestantes = Math.round(total % 60);
+
+  return minutosRestantes
+    ? `${horas}h ${minutosRestantes}min`
+    : `${horas}h`;
+}
+
 export default function Admin({ configInicial, produtosIniciais, pedidosIniciais, email }) {
   const [config, setConfig] = useState(configInicial);
   const [produtos, setProdutos] = useState(produtosIniciais);
@@ -2906,6 +2935,9 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
                   ['Resultado operacional', brl(relatorio.resultadoOperacional || 0)],
                   ['Ticket médio', brl(relatorio.ticketMedio)],
                   ['Entregas', `${relatorio.entregas} de ${relatorio.totalVendas}`],
+                  ['Tempo médio de espera', duracaoMediaTexto(relatorio.tempoMedioEspera)],
+                  ['Tempo médio de preparo', duracaoMediaTexto(relatorio.tempoMedioPreparo)],
+                  ['Tempo médio total', duracaoMediaTexto(relatorio.tempoMedioTotal)],
                 ].map(([rotulo, valor]) => (
                   <div
                     key={rotulo}
