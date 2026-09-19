@@ -407,7 +407,8 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-        // ---------------------------------------------------------------
+
+    // ---------------------------------------------------------------
     // Limite total de utilizacoes.
     //
     // A fonte real para essa verificacao e a tabela cupom_usos.
@@ -461,8 +462,7 @@ export async function POST(request) {
         );
       }
     }
-
-    // ---------------------------------------------------------------
+        // ---------------------------------------------------------------
     // Primeira compra.
     //
     // Se o cupom for marcado como "primeira compra",
@@ -800,9 +800,14 @@ export async function POST(request) {
         );
       }
     } catch (e) {
+      const mensagemErroPix =
+        e instanceof Error
+          ? e.message
+          : String(e);
+
       console.error(
         '[pedidos] pix:',
-        e
+        mensagemErroPix
       );
 
       return NextResponse.json(
@@ -812,6 +817,11 @@ export async function POST(request) {
 
           pedidoId:
             pedido.id,
+
+          // DIAGNOSTICO TEMPORARIO.
+          // Removeremos depois de encontrar a causa da falha.
+          diagnosticoPix:
+            mensagemErroPix,
         },
         { status: 502 }
       );
