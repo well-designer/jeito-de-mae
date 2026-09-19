@@ -27,7 +27,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
 
-      "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com",
+      "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://http2.mlstatic.com",
 
       "style-src 'self' 'unsafe-inline' https://http2.mlstatic.com",
 
