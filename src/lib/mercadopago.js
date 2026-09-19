@@ -531,8 +531,13 @@ export function assinaturaValida({
     return false;
   }
 
+  const dataIdNormalizado =
+    /[a-zA-Z]/.test(String(dataId))
+      ? String(dataId).toLowerCase()
+      : String(dataId);
+
   const manifest =
-    `id:${dataId};` +
+    `id:${dataIdNormalizado};` +
     `request-id:${xRequestId};` +
     `ts:${ts};`;
 
