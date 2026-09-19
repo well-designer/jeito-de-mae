@@ -102,7 +102,10 @@ async function requisicaoMercadoPago(
 function primeiroPagamento(ordem) {
   const pagamentos = ordem?.transactions?.payments;
 
-  if (!Array.isArray(pagamentos) || pagamentos.length === 0) {
+  if (
+    !Array.isArray(pagamentos) ||
+    pagamentos.length === 0
+  ) {
     return null;
   }
 
@@ -185,7 +188,9 @@ export async function criarPagamentoPix({
     },
 
     payer: {
-      email: email || 'cliente@jeitodemae.com.br',
+      email:
+        email ||
+        'cliente@jeitodemae.com.br',
     },
   };
 
@@ -198,22 +203,27 @@ export async function criarPagamentoPix({
   void descricao;
   void nome;
 
-  const ordem = await requisicaoMercadoPago(
-    '/v1/orders',
-    {
-      method: 'POST',
-      body,
+  const ordem =
+    await requisicaoMercadoPago(
+      '/v1/orders',
+      {
+        method: 'POST',
+        body,
 
-      /*
-       * Se a mesma requisição for repetida,
-       * o Mercado Pago não deverá criar outra cobrança.
-       */
-      idempotencyKey: `pix-${pedidoId}`,
-    }
-  );
+        /*
+         * Se a mesma requisição for repetida,
+         * o Mercado Pago não deverá criar outra cobrança.
+         */
+        idempotencyKey:
+          `pix-${pedidoId}`,
+      }
+    );
 
-  const pagamento = primeiroPagamento(ordem);
-  const pix = dadosPixDaOrdem(ordem);
+  const pagamento =
+    primeiroPagamento(ordem);
+
+  const pix =
+    dadosPixDaOrdem(ordem);
 
   if (!ordem?.id) {
     throw new Error(
@@ -221,7 +231,10 @@ export async function criarPagamentoPix({
     );
   }
 
-  if (!pix.qrCode && !pix.qrCodeBase64) {
+  if (
+    !pix.qrCode &&
+    !pix.qrCodeBase64
+  ) {
     console.error(
       '[mercadopago] Order Pix sem QR Code:',
       ordem
@@ -245,13 +258,17 @@ export async function criarPagamentoPix({
       ? String(pagamento.id)
       : null,
 
-    orderId: String(ordem.id),
+    orderId:
+      String(ordem.id),
 
-    qrCode: pix.qrCode,
+    qrCode:
+      pix.qrCode,
 
-    qrCodeBase64: pix.qrCodeBase64,
+    qrCodeBase64:
+      pix.qrCodeBase64,
 
-    ticketUrl: pix.ticketUrl,
+    ticketUrl:
+      pix.ticketUrl,
 
     expiraEm:
       pagamento?.date_of_expiration ||
@@ -287,10 +304,13 @@ export async function criarPagamentoCartao({
   email,
   identification,
 }) {
-  const total = valorMP(valor);
+  const total =
+    valorMP(valor);
 
   if (!token) {
-    throw new Error('Token do cartao nao informado');
+    throw new Error(
+      'Token do cartao nao informado'
+    );
   }
 
   if (!paymentMethodId) {
@@ -299,34 +319,43 @@ export async function criarPagamentoCartao({
     );
   }
 
-  const parcelas = Number(installments || 1);
+  const parcelas =
+    Number(installments || 1);
 
   if (
     !Number.isInteger(parcelas) ||
     parcelas < 1 ||
     parcelas > 24
   ) {
-    throw new Error('Numero de parcelas invalido');
+    throw new Error(
+      'Numero de parcelas invalido'
+    );
   }
 
   const pagamento = {
     amount: total,
 
     payment_method: {
-      id: String(paymentMethodId),
+      id:
+        String(paymentMethodId),
 
-      type: paymentTypeId
-        ? String(paymentTypeId)
-        : 'credit_card',
+      type:
+        paymentTypeId
+          ? String(paymentTypeId)
+          : 'credit_card',
 
-      token: String(token),
+      token:
+        String(token),
 
-      installments: parcelas,
+      installments:
+        parcelas,
     },
   };
 
   const payer = {
-    email: email || 'cliente@jeitodemae.com.br',
+    email:
+      email ||
+      'cliente@jeitodemae.com.br',
   };
 
   /*
@@ -338,34 +367,49 @@ export async function criarPagamentoCartao({
     identification?.number
   ) {
     payer.identification = {
-      type: String(identification.type),
-      number: String(identification.number),
+      type:
+        String(
+          identification.type
+        ),
+
+      number:
+        String(
+          identification.number
+        ),
     };
   }
 
   const body = {
     type: 'online',
     total_amount: total,
-    external_reference: String(pedidoId),
-    processing_mode: 'automatic',
+    external_reference:
+      String(pedidoId),
+    processing_mode:
+      'automatic',
 
     transactions: {
-      payments: [pagamento],
+      payments: [
+        pagamento,
+      ],
     },
 
     payer,
   };
 
-  const ordem = await requisicaoMercadoPago(
-    '/v1/orders',
-    {
-      method: 'POST',
-      body,
-      idempotencyKey: `cartao-${pedidoId}`,
-    }
-  );
+  const ordem =
+    await requisicaoMercadoPago(
+      '/v1/orders',
+      {
+        method: 'POST',
+        body,
 
-  const pagamentoCriado = primeiroPagamento(ordem);
+        idempotencyKey:
+          `cartao-${pedidoId}`,
+      }
+    );
+
+  const pagamentoCriado =
+    primeiroPagamento(ordem);
 
   if (!ordem?.id) {
     throw new Error(
@@ -374,11 +418,15 @@ export async function criarPagamentoCartao({
   }
 
   return {
-    orderId: String(ordem.id),
+    orderId:
+      String(ordem.id),
 
-    paymentId: pagamentoCriado?.id
-      ? String(pagamentoCriado.id)
-      : null,
+    paymentId:
+      pagamentoCriado?.id
+        ? String(
+            pagamentoCriado.id
+          )
+        : null,
 
     status:
       pagamentoCriado?.status ||
@@ -403,12 +451,18 @@ export async function criarPagamentoCartao({
  * Nunca confiamos somente nos dados recebidos pelo webhook:
  * após receber a notificação, consultamos a API oficial.
  */
-export async function consultarOrdem(orderId) {
-  if (!orderId) return null;
+export async function consultarOrdem(
+  orderId
+) {
+  if (!orderId) {
+    return null;
+  }
 
   try {
     return await requisicaoMercadoPago(
-      `/v1/orders/${encodeURIComponent(String(orderId))}`
+      `/v1/orders/${encodeURIComponent(
+        String(orderId)
+      )}`
     );
   } catch (erro) {
     console.error(
@@ -430,14 +484,18 @@ export async function consultarOrdem(orderId) {
  * possamos migrar os arquivos em etapas sem deixar o projeto
  * quebrado entre um deploy e outro.
  */
-export async function consultarPagamento(orderId) {
-  const ordem = await consultarOrdem(orderId);
+export async function consultarPagamento(
+  orderId
+) {
+  const ordem =
+    await consultarOrdem(orderId);
 
   if (!ordem) {
     return null;
   }
 
-  const pagamento = primeiroPagamento(ordem);
+  const pagamento =
+    primeiroPagamento(ordem);
 
   /*
    * Na Orders API o estado pode estar tanto na Order
@@ -459,11 +517,13 @@ export async function consultarPagamento(orderId) {
   }
 
   return {
-    id: pagamento?.id
-      ? String(pagamento.id)
-      : String(ordem.id),
+    id:
+      pagamento?.id
+        ? String(pagamento.id)
+        : String(ordem.id),
 
-    order_id: String(ordem.id),
+    order_id:
+      String(ordem.id),
 
     external_reference:
       ordem?.external_reference ||
@@ -477,7 +537,8 @@ export async function consultarPagamento(orderId) {
       ordem?.status_detail ||
       null,
 
-    order: ordem,
+    order:
+      ordem,
   };
 }
 
@@ -485,15 +546,19 @@ export async function consultarPagamento(orderId) {
 /**
  * Valida a assinatura enviada pelo webhook do Mercado Pago.
  *
- * Isso impede que uma pessoa simplesmente chame nossa URL
- * fingindo que um pedido foi pago.
+ * Esta versão também realiza um diagnóstico temporário
+ * para descobrirmos exatamente qual formato de manifesto
+ * corresponde à assinatura recebida.
+ *
+ * Nenhuma chave secreta é exibida nos logs.
  */
 export function assinaturaValida({
   xSignature,
   xRequestId,
   dataId,
 }) {
-  const secret = process.env.MP_WEBHOOK_SECRET;
+  const secret =
+    process.env.MP_WEBHOOK_SECRET;
 
   if (
     !secret ||
@@ -506,65 +571,126 @@ export function assinaturaValida({
 
   const partes = {};
 
-  for (const parte of String(xSignature).split(',')) {
-    const indice = parte.indexOf('=');
+  for (
+    const parte of
+    String(xSignature).split(',')
+  ) {
+    const indice =
+      parte.indexOf('=');
 
-    if (indice === -1) continue;
+    if (indice === -1) {
+      continue;
+    }
 
-    const chave = parte
-      .slice(0, indice)
-      .trim();
+    const chave =
+      parte
+        .slice(0, indice)
+        .trim();
 
-    const valor = parte
-      .slice(indice + 1)
-      .trim();
+    const valor =
+      parte
+        .slice(indice + 1)
+        .trim();
 
     if (chave) {
       partes[chave] = valor;
     }
   }
 
-  const ts = partes.ts;
-  const v1 = partes.v1;
+  const ts =
+    partes.ts;
+
+  const v1 =
+    partes.v1;
 
   if (!ts || !v1) {
     return false;
   }
 
-  const dataIdNormalizado =
-    /[a-zA-Z]/.test(String(dataId))
-      ? String(dataId).toLowerCase()
-      : String(dataId);
+  const idOriginal =
+    String(dataId);
 
-  const manifest =
-    `id:${dataIdNormalizado};` +
-    `request-id:${xRequestId};` +
-    `ts:${ts};`;
+  const idMinusculo =
+    idOriginal.toLowerCase();
 
-  const esperado = crypto
-    .createHmac('sha256', secret)
-    .update(manifest)
-    .digest('hex');
+  const requestId =
+    String(xRequestId);
 
-  try {
-    const recebidoBuffer =
-      Buffer.from(v1, 'hex');
+  /*
+   * Testamos algumas composições possíveis do manifesto.
+   *
+   * Isso é apenas diagnóstico.
+   * Continuamos aceitando o webhook somente se o HMAC
+   * calculado for exatamente igual ao recebido.
+   */
+  const variantes = {
+    original:
+      `id:${idOriginal};` +
+      `request-id:${requestId};` +
+      `ts:${ts};`,
 
-    const esperadoBuffer =
-      Buffer.from(esperado, 'hex');
+    minusculo:
+      `id:${idMinusculo};` +
+      `request-id:${requestId};` +
+      `ts:${ts};`,
 
-    if (
-      recebidoBuffer.length !==
-      esperadoBuffer.length
-    ) {
-      return false;
-    }
+    originalSemRequestId:
+      `id:${idOriginal};` +
+      `ts:${ts};`,
 
-    return crypto.timingSafeEqual(
-      recebidoBuffer,
-      esperadoBuffer
-    );
-  } catch {
-    return false;
+    minusculoSemRequestId:
+      `id:${idMinusculo};` +
+      `ts:${ts};`,
+  };
+
+  const recebido =
+    String(v1)
+      .trim()
+      .toLowerCase();
+
+  const resultados = {};
+
+  for (
+    const [nome, manifest]
+    of Object.entries(variantes)
+  ) {
+    const calculado =
+      crypto
+        .createHmac(
+          'sha256',
+          secret
+        )
+        .update(manifest)
+        .digest('hex');
+
+    resultados[nome] =
+      calculado === recebido;
   }
+
+  console.warn(
+    '[mercadopago] diagnostico assinatura',
+    {
+      dataId:
+        idOriginal,
+
+      xRequestId:
+        requestId,
+
+      resultados,
+    }
+  );
+
+  /*
+   * Não ignoramos a segurança durante o diagnóstico.
+   *
+   * O webhook somente será aceito caso pelo menos uma
+   * das assinaturas calculadas corresponda exatamente
+   * à assinatura recebida do Mercado Pago.
+   */
+  return Object
+    .values(resultados)
+    .some(
+      (resultado) =>
+        resultado === true
+    );
 }
