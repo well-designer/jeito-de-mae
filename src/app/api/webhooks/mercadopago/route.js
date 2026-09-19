@@ -44,13 +44,77 @@ export async function POST(request) {
   }
 
   // ---------------------------------------------------------------
+  // DIAGNOSTICO TEMPORARIO
+  //
+  // Precisamos comparar exatamente o que chega na URL
+  // com o data.id existente no corpo da notificacao.
+  //
+  // Nenhuma chave secreta e registrada aqui.
+  // ---------------------------------------------------------------
+
+  const dataIdCorpo =
+    corpo?.data?.id != null
+      ? String(corpo.data.id)
+      : '';
+
+  const dataIdQuery =
+    request.nextUrl.searchParams.get('data.id') ||
+    request.nextUrl.searchParams.get('data_id') ||
+    '';
+
+  const queryRecebida =
+    Object.fromEntries(
+      request.nextUrl.searchParams.entries()
+    );
+
+  console.warn(
+    '[webhook] diagnostico requisicao recebida',
+    {
+      pathname:
+        request.nextUrl.pathname,
+
+      query:
+        queryRecebida,
+
+      dataIdCorpo,
+
+      dataIdQuery,
+
+      action:
+        corpo?.action || null,
+
+      type:
+        corpo?.type || null,
+
+      liveMode:
+        corpo?.live_mode ?? null,
+
+      applicationId:
+        corpo?.application_id != null
+          ? String(corpo.application_id)
+          : null,
+
+      userId:
+        corpo?.user_id != null
+          ? String(corpo.user_id)
+          : null,
+
+      xRequestId,
+
+      temXSignature:
+        !!xSignature,
+    }
+  );
+
+  // ---------------------------------------------------------------
   // Na notificacao de Order, data.id representa o ID da Order.
-  // Tambem mantemos o fallback pela query string.
+  // Mantemos, por enquanto, o mesmo comportamento existente:
+  // corpo primeiro e query como fallback.
   // ---------------------------------------------------------------
 
   const dataId = String(
-    corpo?.data?.id ||
-      request.nextUrl.searchParams.get('data.id') ||
+    dataIdCorpo ||
+      dataIdQuery ||
       ''
   );
 
@@ -73,43 +137,66 @@ export async function POST(request) {
   ) {
     const partesAssinatura = {};
 
-for (const parte of String(xSignature || '').split(',')) {
-  const indice = parte.indexOf('=');
+    for (
+      const parte of
+      String(xSignature || '').split(',')
+    ) {
+      const indice =
+        parte.indexOf('=');
 
-  if (indice === -1) continue;
+      if (indice === -1) {
+        continue;
+      }
 
-  const chave = parte.slice(0, indice).trim();
-  const valor = parte.slice(indice + 1).trim();
+      const chave =
+        parte
+          .slice(0, indice)
+          .trim();
 
-  if (chave) {
-    partesAssinatura[chave] = valor;
-  }
-}
+      const valor =
+        parte
+          .slice(indice + 1)
+          .trim();
 
-console.warn(
-  '[webhook] assinatura invalida',
-  {
-    dataId,
-    xRequestId,
+      if (chave) {
+        partesAssinatura[chave] =
+          valor;
+      }
+    }
 
-    temXSignature:
-      !!xSignature,
+    console.warn(
+      '[webhook] assinatura invalida',
+      {
+        dataId,
 
-    temTs:
-      !!partesAssinatura.ts,
+        dataIdCorpo,
 
-    temV1:
-      !!partesAssinatura.v1,
+        dataIdQuery,
 
-    tamanhoV1:
-      partesAssinatura.v1?.length || 0,
+        xRequestId,
 
-    inicioV1:
-      partesAssinatura.v1
-        ? partesAssinatura.v1.slice(0, 8)
-        : null,
-  }
-);
+        temXSignature:
+          !!xSignature,
+
+        temTs:
+          !!partesAssinatura.ts,
+
+        temV1:
+          !!partesAssinatura.v1,
+
+        tamanhoV1:
+          partesAssinatura.v1?.length ||
+          0,
+
+        inicioV1:
+          partesAssinatura.v1
+            ? partesAssinatura.v1.slice(
+                0,
+                8
+              )
+            : null,
+      }
+    );
 
     return NextResponse.json(
       {
@@ -336,13 +423,6 @@ console.warn(
 
   // ---------------------------------------------------------------
   // PAGAMENTO AINDA PENDENTE.
-  //
-  // Exemplo do Pix:
-  // status = action_required
-  // status_detail = waiting_transfer
-  //
-  // Mantemos status_pagamento como "pendente",
-  // mas ja salvamos os IDs do Mercado Pago.
   // ---------------------------------------------------------------
 
   const atualizacao = {
