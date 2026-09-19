@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
-import { criarPagamentoPix } from '@/lib/mercadopago';
+import { criarPagamentoPix, criarPagamentoCartao } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
 import { gerarCodigo } from '@/lib/format';
 
@@ -407,8 +407,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // ---------------------------------------------------------------
+        // ---------------------------------------------------------------
     // Limite total de utilizacoes.
     //
     // A fonte real para essa verificacao e a tabela cupom_usos.
@@ -742,13 +741,17 @@ export async function POST(request) {
   }
 
   // -------------------------------------------------------------------
-  // Pix dinamico.
+  // Pagamento.
   //
   // IMPORTANTE:
   // "total" aqui ja contem o desconto do cupom.
+  //
+  // Pix e cartao sao processados pelo Mercado Pago.
+  // Dinheiro avisa a cozinha imediatamente.
   // -------------------------------------------------------------------
 
   let pix = null;
+  let cartao = null;
 
   if (dados.pagamento === 'pix') {
     try {
@@ -768,20 +771,34 @@ export async function POST(request) {
         qrCode: cobranca.qrCode,
         qrCodeBase64:
           cobranca.qrCodeBase64,
+        ticketUrl:
+          cobranca.ticketUrl || null,
         expiraEm:
           cobranca.expiraEm,
       };
 
-      await sb
+      const {
+        error: erroAtualizarPagamento,
+      } = await sb
         .from('pedidos')
         .update({
+          mp_order_id:
+            cobranca.orderId,
+
           mp_payment_id:
-            cobranca.id,
+            cobranca.paymentId,
         })
         .eq(
           'id',
           pedido.id
         );
+
+      if (erroAtualizarPagamento) {
+        console.error(
+          '[pedidos] salvar IDs Pix:',
+          erroAtualizarPagamento
+        );
+      }
     } catch (e) {
       console.error(
         '[pedidos] pix:',
@@ -792,6 +809,117 @@ export async function POST(request) {
         {
           erro:
             'Pedido registrado, mas o Pix falhou. Fale com a loja.',
+
+          pedidoId:
+            pedido.id,
+        },
+        { status: 502 }
+      );
+    }
+  } else if (dados.pagamento === 'credito') {
+    try {
+      const cobranca =
+        await criarPagamentoCartao({
+          valor: total,
+
+          pedidoId:
+            pedido.id,
+
+          token:
+            dados.cartao.token,
+
+          paymentMethodId:
+            dados.cartao.payment_method_id,
+
+          paymentTypeId:
+            dados.cartao.payment_type_id,
+
+          installments:
+            dados.cartao.installments,
+
+          email:
+            dados.cartao.email,
+
+          identification:
+            dados.cartao.identification,
+        });
+
+      const statusAprovado =
+        cobranca.status === 'processed' ||
+        cobranca.status === 'approved';
+
+      const statusRecusado = [
+        'rejected',
+        'cancelled',
+        'canceled',
+        'expired',
+      ].includes(cobranca.status);
+
+      const statusPagamento =
+        statusAprovado
+          ? 'pago'
+          : statusRecusado
+            ? 'expirado'
+            : 'pendente';
+
+      const {
+        data: pedidoAtualizado,
+        error: erroAtualizarPagamento,
+      } = await sb
+        .from('pedidos')
+        .update({
+          mp_order_id:
+            cobranca.orderId,
+
+          mp_payment_id:
+            cobranca.paymentId,
+
+          status_pagamento:
+            statusPagamento,
+        })
+        .eq(
+          'id',
+          pedido.id
+        )
+        .select()
+        .single();
+
+      if (erroAtualizarPagamento) {
+        console.error(
+          '[pedidos] salvar pagamento cartao:',
+          erroAtualizarPagamento
+        );
+      }
+
+      cartao = {
+        status:
+          cobranca.status,
+
+        statusDetail:
+          cobranca.statusDetail,
+
+        aprovado:
+          statusAprovado,
+      };
+
+      if (statusAprovado) {
+        avisarPedidoNovo(
+          pedidoAtualizado || {
+            ...pedido,
+            status_pagamento: 'pago',
+          }
+        ).catch(() => {});
+      }
+    } catch (e) {
+      console.error(
+        '[pedidos] cartao:',
+        e
+      );
+
+      return NextResponse.json(
+        {
+          erro:
+            'Pedido registrado, mas o pagamento no cartao falhou. Tente novamente ou escolha outra forma de pagamento.',
 
           pedidoId:
             pedido.id,
@@ -833,5 +961,7 @@ export async function POST(request) {
     },
 
     pix,
+
+    cartao,
   });
 }
