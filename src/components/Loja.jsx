@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { brl, CATEGORIAS } from '@/lib/format';
 import IconePrato from './IconePrato';
 import IconeSucesso from './IconeSucesso';
+import CartaoMercadoPago from './CartaoMercadoPago';
 
 export default function Loja({ config, produtos }) {
   const [catAtiva, setCatAtiva] = useState('Todos');
@@ -167,38 +168,70 @@ export default function Loja({ config, produtos }) {
     }
   }
 
-  async function confirmar() {
+  async function confirmar(dadosCartao = null) {
     setErro('');
     setEnviando(true);
 
     try {
+      const payload = {
+        nome: form.nome,
+        telefone: form.telefone,
+        endereco: form.endereco,
+        referencia: form.referencia,
+        tipo: form.tipo,
+        pagamento: form.pagamento,
+        cupom: cupomAplicado?.codigo || '',
+        itens: carrinho.map((i) => ({
+          produtoId: i.produtoId,
+          opcao: i.opcao,
+          qtd: i.qtd,
+          adicionais: (i.adicionais || []).map((a) => a.nome),
+          talher: i.talher,
+          obs: i.obs,
+        })),
+      };
+
+      if (form.pagamento === 'credito') {
+        if (!dadosCartao) {
+          throw new Error(
+            'Preencha os dados do cartão para continuar.'
+          );
+        }
+
+        payload.cartao = dadosCartao;
+      }
+
       const res = await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: form.nome,
-          telefone: form.telefone,
-          endereco: form.endereco,
-          referencia: form.referencia,
-          tipo: form.tipo,
-          pagamento: form.pagamento,
-          cupom: cupomAplicado?.codigo || '',
-          itens: carrinho.map((i) => ({
-            produtoId: i.produtoId,
-            opcao: i.opcao,
-            qtd: i.qtd,
-            adicionais: (i.adicionais || []).map((a) => a.nome),
-            talher: i.talher,
-            obs: i.obs,
-          })),
-        }),
+        body: JSON.stringify(payload),
       });
 
       const dados = await res.json();
 
       if (!res.ok) {
-        setErro(dados.erro || 'Não foi possível enviar o pedido.');
-        return;
+        throw new Error(
+          dados.erro || 'Não foi possível enviar o pedido.'
+        );
+      }
+
+      if (
+        form.pagamento === 'credito' &&
+        dados.cartao &&
+        !dados.cartao.aprovado
+      ) {
+        const recusado = [
+          'rejected',
+          'cancelled',
+          'canceled',
+          'expired',
+        ].includes(dados.cartao.status);
+
+        if (recusado) {
+          throw new Error(
+            'O pagamento não foi aprovado. Confira os dados do cartão ou tente outra forma de pagamento.'
+          );
+        }
       }
 
       setPedidoFeito(dados.pedido);
@@ -208,14 +241,26 @@ export default function Loja({ config, produtos }) {
       setErroCupom('');
 
       if (dados.pix) {
+        setPago(false);
         setPix(dados.pix);
         setModal('pix');
-      } else {
-        setPago(false);
-        setModal('sucesso');
+        return;
       }
-    } catch {
-      setErro('Falha de conexão. Tente novamente.');
+
+      if (form.pagamento === 'credito') {
+        setPago(!!dados.cartao?.aprovado);
+        setModal('sucesso');
+        return;
+      }
+
+      setPago(false);
+      setModal('sucesso');
+    } catch (e) {
+      const mensagem =
+        e?.message || 'Falha de conexão. Tente novamente.';
+
+      setErro(mensagem);
+      throw e;
     } finally {
       setEnviando(false);
     }
@@ -338,8 +383,7 @@ export default function Loja({ config, produtos }) {
           </div>
         </div>
       </header>
-
-      <nav className="cats">
+            <nav className="cats">
         <div className="cats-in">
           {catsDisponiveis.map((c) => (
             <button
@@ -765,8 +809,7 @@ export default function Loja({ config, produtos }) {
                 </div>
               </>
             )}
-
-            {modal === 'checkout' && (
+                        {modal === 'checkout' && (
               <>
                 <div className="sheet-head">
                   <h3>Dados da entrega</h3>
@@ -850,39 +893,64 @@ export default function Loja({ config, produtos }) {
                     Cupom de desconto
                   </label>
 
-                  <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
+                  <div
+                    className="row"
+                    style={{
+                      gap: 8,
+                      alignItems: 'stretch',
+                    }}
+                  >
                     <input
                       className="inp"
                       maxLength={40}
                       value={cupomDigitado}
                       onChange={(e) => {
-                        setCupomDigitado(e.target.value.toUpperCase());
+                        setCupomDigitado(
+                          e.target.value.toUpperCase()
+                        );
                         setCupomAplicado(null);
                         setErroCupom('');
                       }}
                       placeholder="Ex.: TESTE10"
-                      style={{ margin: 0, flex: 1 }}
+                      style={{
+                        margin: 0,
+                        flex: 1,
+                      }}
                     />
 
                     <button
                       type="button"
                       className="btn sm"
-                      disabled={validandoCupom || !carrinho.length}
+                      disabled={
+                        validandoCupom ||
+                        !carrinho.length
+                      }
                       onClick={aplicarCupom}
-                      style={{ width: 'auto', flex: '0 0 auto' }}
+                      style={{
+                        width: 'auto',
+                        flex: '0 0 auto',
+                      }}
                     >
-                      {validandoCupom ? 'Validando...' : 'Aplicar'}
+                      {validandoCupom
+                        ? 'Validando...'
+                        : 'Aplicar'}
                     </button>
                   </div>
 
                   {erroCupom && (
-                    <div className="alert err" style={{ marginTop: 8 }}>
+                    <div
+                      className="alert err"
+                      style={{ marginTop: 8 }}
+                    >
                       {erroCupom}
                     </div>
                   )}
 
                   {cupomAplicado && (
-                    <div className="alert ok" style={{ marginTop: 8 }}>
+                    <div
+                      className="alert ok"
+                      style={{ marginTop: 8 }}
+                    >
                       <b>{cupomAplicado.codigo}</b> aplicado · desconto de{' '}
                       <b>{brl(descontoCupom)}</b>
                     </div>
@@ -901,7 +969,8 @@ export default function Loja({ config, produtos }) {
                         onChange={(e) =>
                           setForm({
                             ...form,
-                            endereco: e.target.value,
+                            endereco:
+                              e.target.value,
                           })
                         }
                         placeholder="Rua, número, bairro, complemento"
@@ -918,7 +987,8 @@ export default function Loja({ config, produtos }) {
                         onChange={(e) =>
                           setForm({
                             ...form,
-                            referencia: e.target.value,
+                            referencia:
+                              e.target.value,
                           })
                         }
                         placeholder="Ex.: portão verde, ao lado da padaria"
@@ -949,6 +1019,11 @@ export default function Loja({ config, produtos }) {
                         'Confirmação automática assim que o pagamento cair',
                       ],
                       [
+                        'credito',
+                        'Cartão de crédito',
+                        'Pagamento seguro pelo Mercado Pago',
+                      ],
+                      [
                         'dinheiro',
                         'Dinheiro na entrega',
                         'Combine o troco pelo telefone',
@@ -957,19 +1032,24 @@ export default function Loja({ config, produtos }) {
                       <label
                         key={v}
                         className={`opt ${
-                          form.pagamento === v ? 'active' : ''
+                          form.pagamento === v
+                            ? 'active'
+                            : ''
                         }`}
-                        onClick={() =>
+                        onClick={() => {
+                          setErro('');
                           setForm({
                             ...form,
                             pagamento: v,
-                          })
-                        }
+                          });
+                        }}
                       >
                         <input
                           type="radio"
                           readOnly
-                          checked={form.pagamento === v}
+                          checked={
+                            form.pagamento === v
+                          }
                         />
 
                         <span className="on">
@@ -978,7 +1058,8 @@ export default function Loja({ config, produtos }) {
                           <small
                             style={{
                               fontWeight: 400,
-                              color: 'var(--muted)',
+                              color:
+                                'var(--muted)',
                             }}
                           >
                             {s}
@@ -988,18 +1069,35 @@ export default function Loja({ config, produtos }) {
                     ))}
                   </div>
 
+                  {form.pagamento === 'credito' && (
+                    <CartaoMercadoPago
+                      valor={totalCheckout}
+                      desabilitado={enviando}
+                      onPagar={confirmar}
+                      onErro={(mensagem) =>
+                        setErro(mensagem)
+                      }
+                    />
+                  )}
+
                   <div style={{ marginTop: 18 }}>
                     <div className="tot">
                       <span>Subtotal</span>
                       <span>{brl(subtotal)}</span>
                     </div>
 
-                    {cupomAplicado && descontoCupom > 0 && (
-                      <div className="tot">
-                        <span>Desconto ({cupomAplicado.codigo})</span>
-                        <span>- {brl(descontoCupom)}</span>
-                      </div>
-                    )}
+                    {cupomAplicado &&
+                      descontoCupom > 0 && (
+                        <div className="tot">
+                          <span>
+                            Desconto (
+                            {cupomAplicado.codigo})
+                          </span>
+                          <span>
+                            - {brl(descontoCupom)}
+                          </span>
+                        </div>
+                      )}
 
                     <div className="tot">
                       <span>Entrega</span>
@@ -1008,25 +1106,31 @@ export default function Loja({ config, produtos }) {
 
                     <div className="tot big">
                       <span>Total</span>
-                      <span>{brl(totalCheckout)}</span>
+                      <span>
+                        {brl(totalCheckout)}
+                      </span>
                     </div>
                   </div>
 
-                  <button
-                    className="btn"
-                    style={{ marginTop: 16 }}
-                    disabled={enviando}
-                    onClick={confirmar}
-                  >
-                    {enviando
-                      ? 'Enviando...'
-                      : 'Confirmar pedido'}
-                  </button>
+                  {form.pagamento !== 'credito' && (
+                    <button
+                      className="btn"
+                      style={{ marginTop: 16 }}
+                      disabled={enviando}
+                      onClick={() => confirmar()}
+                    >
+                      {enviando
+                        ? 'Enviando...'
+                        : 'Confirmar pedido'}
+                    </button>
+                  )}
 
                   <button
                     className="btn ghost"
                     style={{ marginTop: 8 }}
-                    onClick={() => setModal('carrinho')}
+                    onClick={() =>
+                      setModal('carrinho')
+                    }
                   >
                     Voltar
                   </button>
@@ -1045,8 +1149,7 @@ export default function Loja({ config, produtos }) {
                 </div>
               </>
             )}
-
-            {modal === 'pix' && pix && pedidoFeito && (
+                        {modal === 'pix' && pix && pedidoFeito && (
               <>
                 <div className="sheet-head">
                   <h3>Pagamento via Pix</h3>
@@ -1201,8 +1304,8 @@ export default function Loja({ config, produtos }) {
                   >
                     {pago ? (
                       <>
-                        <b>Pagamento confirmado.</b> Já estamos
-                        preparando.
+                        <b>Pagamento confirmado.</b> Seu pedido foi
+                        recebido com sucesso.
                       </>
                     ) : form.pagamento === 'dinheiro' ? (
                       <>
@@ -1211,8 +1314,9 @@ export default function Loja({ config, produtos }) {
                       </>
                     ) : (
                       <>
-                        <b>Aguardando o pagamento.</b> O preparo
-                        começa assim que ele for confirmado.
+                        <b>Aguardando o pagamento.</b> O pedido
+                        seguirá normalmente assim que o pagamento
+                        for confirmado.
                       </>
                     )}
                   </div>
