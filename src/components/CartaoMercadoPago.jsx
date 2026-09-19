@@ -4,52 +4,96 @@ import { useEffect, useRef, useState } from 'react';
 
 const SDK_URL = 'https://sdk.mercadopago.com/js/v2';
 
-function carregarSdkMercadoPago() {
-  return new Promise((resolve, reject) => {
-    if (window.MercadoPago) {
-      resolve();
-      return;
-    }
-
-    const existente = document.querySelector(
-      `script[src="${SDK_URL}"]`
+function carregarMercadoPago() {
+  if (typeof window === 'undefined') {
+    return Promise.reject(
+      new Error('Mercado Pago disponível apenas no navegador.')
     );
+  }
 
-    if (existente) {
-      existente.addEventListener('load', resolve, {
+  if (window.MercadoPago) {
+    return Promise.resolve(window.MercadoPago);
+  }
+
+  if (window.__mercadoPagoSdkPromise) {
+    return window.__mercadoPagoSdkPromise;
+  }
+
+  window.__mercadoPagoSdkPromise = new Promise(
+    (resolve, reject) => {
+      let script = document.querySelector(
+        `script[src="${SDK_URL}"]`
+      );
+
+      const verificar = () => {
+        if (window.MercadoPago) {
+          resolve(window.MercadoPago);
+        } else {
+          window.__mercadoPagoSdkPromise = null;
+
+          reject(
+            new Error(
+              'O SDK abriu, mas o Mercado Pago não foi inicializado.'
+            )
+          );
+        }
+      };
+
+      if (script) {
+        if (window.MercadoPago) {
+          resolve(window.MercadoPago);
+          return;
+        }
+
+        script.addEventListener('load', verificar, {
+          once: true,
+        });
+
+        script.addEventListener(
+          'error',
+          () => {
+            window.__mercadoPagoSdkPromise = null;
+
+            reject(
+              new Error(
+                'Não foi possível carregar o SDK do Mercado Pago.'
+              )
+            );
+          },
+          { once: true }
+        );
+
+        return;
+      }
+
+      script = document.createElement('script');
+      script.src = SDK_URL;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+
+      script.addEventListener('load', verificar, {
         once: true,
       });
 
-      existente.addEventListener(
+      script.addEventListener(
         'error',
-        () =>
+        () => {
+          window.__mercadoPagoSdkPromise = null;
+
           reject(
             new Error(
-              'Não foi possível carregar o Mercado Pago.'
+              'Não foi possível carregar o SDK do Mercado Pago.'
             )
-          ),
+          );
+        },
         { once: true }
       );
 
-      return;
+      document.head.appendChild(script);
     }
+  );
 
-    const script = document.createElement('script');
-
-    script.src = SDK_URL;
-    script.async = true;
-
-    script.onload = () => resolve();
-
-    script.onerror = () =>
-      reject(
-        new Error(
-          'Não foi possível carregar o Mercado Pago.'
-        )
-      );
-
-    document.head.appendChild(script);
-  });
+  return window.__mercadoPagoSdkPromise;
 }
 
 export default function CartaoMercadoPago({
@@ -58,7 +102,6 @@ export default function CartaoMercadoPago({
   onPagar,
   onErro,
 }) {
-  const containerRef = useRef(null);
   const controllerRef = useRef(null);
   const onPagarRef = useRef(onPagar);
   const onErroRef = useRef(onErro);
@@ -75,7 +118,7 @@ export default function CartaoMercadoPago({
   }, [onErro]);
 
   useEffect(() => {
-    let cancelado = false;
+    let ativo = true;
 
     async function iniciar() {
       setCarregando(true);
@@ -83,199 +126,171 @@ export default function CartaoMercadoPago({
 
       try {
         const publicKey =
-          process.env
-            .NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
+          process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY;
 
         if (!publicKey) {
           throw new Error(
-            'Chave pública do Mercado Pago não configurada.'
+            'A chave pública do Mercado Pago não está configurada.'
           );
         }
 
         const amount = Number(valor);
 
-        if (
-          !Number.isFinite(amount) ||
-          amount <= 0
-        ) {
+        if (!Number.isFinite(amount) || amount <= 0) {
           throw new Error(
-            'Valor do pagamento inválido.'
+            'O valor do pagamento precisa ser maior que zero.'
           );
         }
 
-        await carregarSdkMercadoPago();
+        await carregarMercadoPago();
 
-        if (
-          cancelado ||
-          !containerRef.current
-        ) {
-          return;
+        if (!ativo) return;
+
+        if (!window.MercadoPago) {
+          throw new Error(
+            'O Mercado Pago não foi disponibilizado pelo SDK.'
+          );
         }
 
-        if (controllerRef.current) {
-          try {
-            await controllerRef.current.unmount();
-          } catch {}
-
-          controllerRef.current = null;
-        }
-
-        containerRef.current.innerHTML = '';
-
-        const mp = new window.MercadoPago(
-          publicKey,
-          {
-            locale: 'pt-BR',
-          }
-        );
+        const mp = new window.MercadoPago(publicKey, {
+          locale: 'pt-BR',
+        });
 
         const bricksBuilder = mp.bricks();
 
-        const settings = {
-          initialization: {
-            amount,
-          },
-
-          customization: {
-            paymentMethods: {
-              creditCard: 'all',
-              debitCard: 'none',
-              ticket: 'none',
-              bankTransfer: 'none',
-              atm: 'none',
-              onboarding_credits: 'none',
-              mercadoPago: 'none',
+        const controller = await bricksBuilder.create(
+          'cardPayment',
+          'cardPaymentBrick_container',
+          {
+            initialization: {
+              amount: Number(amount.toFixed(2)),
             },
-          },
 
-          callbacks: {
-            onReady: () => {
-              if (!cancelado) {
+            callbacks: {
+              onReady: () => {
+                if (!ativo) return;
+
                 setCarregando(false);
-              }
-            },
+                setErroLocal('');
+              },
 
-            onSubmit: (
-              formData,
-              additionalData
-            ) => {
-              return new Promise(
-                async (resolve, reject) => {
-                  try {
-                    if (desabilitado) {
-                      throw new Error(
-                        'Aguarde o processamento do pedido.'
-                      );
-                    }
-
-                    const token =
-                      formData?.token;
-
-                    const paymentMethodId =
-                      formData
-                        ?.payment_method_id;
-
-                    const paymentTypeId =
-                      additionalData
-                        ?.paymentTypeId ||
-                      'credit_card';
-
-                    const installments =
-                      Number(
-                        formData
-                          ?.installments || 1
-                      );
-
-                    const email =
-                      formData
-                        ?.payer
-                        ?.email;
-
-                    const identification =
-                      formData
-                        ?.payer
-                        ?.identification;
-
-                    if (
-                      !token ||
-                      !paymentMethodId ||
-                      !email
-                    ) {
-                      throw new Error(
-                        'Confira os dados do cartão e tente novamente.'
-                      );
-                    }
-
-                    await onPagarRef.current?.({
-                      token,
-
-                      payment_method_id:
-                        paymentMethodId,
-
-                      payment_type_id:
-                        paymentTypeId,
-
-                      installments,
-
-                      email,
-
-                      identification:
-                        identification?.type &&
-                        identification?.number
-                          ? {
-                              type:
-                                identification.type,
-
-                              number:
-                                identification.number,
-                            }
-                          : null,
-                    });
-
-                    resolve();
-                  } catch (erro) {
-                    const mensagem =
-                      erro?.message ||
-                      'Não foi possível processar o cartão.';
-
-                    setErroLocal(mensagem);
-
-                    onErroRef.current?.(
-                      mensagem
+              onSubmit: async (
+                formData,
+                additionalData
+              ) => {
+                try {
+                  if (desabilitado) {
+                    throw new Error(
+                      'Aguarde o processamento do pedido.'
                     );
-
-                    reject(erro);
                   }
+
+                  const token = formData?.token;
+
+                  const paymentMethodId =
+                    formData?.payment_method_id;
+
+                  const paymentTypeId =
+                    additionalData?.paymentTypeId ||
+                    'credit_card';
+
+                  const installments = Number(
+                    formData?.installments || 1
+                  );
+
+                  const email =
+                    formData?.payer?.email;
+
+                  const identification =
+                    formData?.payer?.identification;
+
+                  if (
+                    paymentTypeId !== 'credit_card'
+                  ) {
+                    throw new Error(
+                      'Utilize um cartão de crédito.'
+                    );
+                  }
+
+                  if (
+                    !token ||
+                    !paymentMethodId ||
+                    !email
+                  ) {
+                    throw new Error(
+                      'Confira os dados do cartão e tente novamente.'
+                    );
+                  }
+
+                  setErroLocal('');
+
+                  if (!onPagarRef.current) {
+                    throw new Error(
+                      'Não foi possível enviar o pagamento.'
+                    );
+                  }
+
+                  await onPagarRef.current({
+                    token,
+
+                    payment_method_id:
+                      paymentMethodId,
+
+                    payment_type_id:
+                      'credit_card',
+
+                    installments,
+
+                    email,
+
+                    identification:
+                      identification?.type &&
+                      identification?.number
+                        ? {
+                            type:
+                              identification.type,
+
+                            number:
+                              identification.number,
+                          }
+                        : null,
+                  });
+                } catch (erro) {
+                  const mensagem =
+                    erro?.message ||
+                    'Não foi possível processar o cartão.';
+
+                  if (ativo) {
+                    setErroLocal(mensagem);
+                  }
+
+                  onErroRef.current?.(mensagem);
+
+                  throw erro;
                 }
-              );
+              },
+
+              onError: (erro) => {
+                console.error(
+                  '[Mercado Pago Brick]',
+                  erro
+                );
+
+                if (!ativo) return;
+
+                const mensagem =
+                  'Não foi possível abrir o formulário do cartão.';
+
+                setCarregando(false);
+                setErroLocal(mensagem);
+
+                onErroRef.current?.(mensagem);
+              },
             },
+          }
+        );
 
-            onError: (erro) => {
-              console.error(
-                '[Mercado Pago Brick]',
-                erro
-              );
-
-              const mensagem =
-                'Não foi possível carregar o formulário do cartão.';
-
-              setErroLocal(mensagem);
-
-              onErroRef.current?.(
-                mensagem
-              );
-            },
-          },
-        };
-
-        const controller =
-          await bricksBuilder.create(
-            'cardPayment',
-            'cardPaymentBrick_container',
-            settings
-          );
-
-        if (cancelado) {
+        if (!ativo) {
           try {
             await controller.unmount();
           } catch {}
@@ -283,33 +298,30 @@ export default function CartaoMercadoPago({
           return;
         }
 
-        controllerRef.current =
-          controller;
+        controllerRef.current = controller;
       } catch (erro) {
         console.error(
           '[Mercado Pago]',
           erro
         );
 
-        if (!cancelado) {
-          const mensagem =
-            erro?.message ||
-            'Não foi possível iniciar o pagamento com cartão.';
+        if (!ativo) return;
 
-          setCarregando(false);
-          setErroLocal(mensagem);
+        const mensagem =
+          erro?.message ||
+          'Não foi possível iniciar o pagamento com cartão.';
 
-          onErroRef.current?.(
-            mensagem
-          );
-        }
+        setCarregando(false);
+        setErroLocal(mensagem);
+
+        onErroRef.current?.(mensagem);
       }
     }
 
     iniciar();
 
     return () => {
-      cancelado = true;
+      ativo = false;
 
       const controller =
         controllerRef.current;
@@ -317,9 +329,13 @@ export default function CartaoMercadoPago({
       controllerRef.current = null;
 
       if (controller) {
-        Promise.resolve(
-          controller.unmount()
-        ).catch(() => {});
+        try {
+          const resultado = controller.unmount();
+
+          if (resultado?.catch) {
+            resultado.catch(() => {});
+          }
+        } catch {}
       }
     };
   }, [valor]);
@@ -329,9 +345,7 @@ export default function CartaoMercadoPago({
       {carregando && (
         <div
           className="alert"
-          style={{
-            marginBottom: 12,
-          }}
+          style={{ marginBottom: 12 }}
         >
           Carregando pagamento seguro...
         </div>
@@ -340,18 +354,13 @@ export default function CartaoMercadoPago({
       {erroLocal && (
         <div
           className="alert err"
-          style={{
-            marginBottom: 12,
-          }}
+          style={{ marginBottom: 12 }}
         >
           {erroLocal}
         </div>
       )}
 
-      <div
-        id="cardPaymentBrick_container"
-        ref={containerRef}
-      />
+      <div id="cardPaymentBrick_container" />
     </div>
   );
 }
