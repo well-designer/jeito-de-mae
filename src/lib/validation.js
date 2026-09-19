@@ -39,7 +39,7 @@ export const pedidoSchema = z.object({
 
   tipo: z.enum(['entrega', 'retirada']),
 
-  pagamento: z.enum(['pix', 'dinheiro']),
+  pagamento: z.enum(['pix', 'credito', 'dinheiro']),
 
   itens: z.array(itemSchema)
     .min(1, 'Carrinho vazio')
