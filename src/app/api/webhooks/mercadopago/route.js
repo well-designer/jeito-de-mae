@@ -71,9 +71,45 @@ export async function POST(request) {
       dataId,
     })
   ) {
-    console.warn(
-      '[webhook] assinatura invalida'
-    );
+    const partesAssinatura = {};
+
+for (const parte of String(xSignature || '').split(',')) {
+  const indice = parte.indexOf('=');
+
+  if (indice === -1) continue;
+
+  const chave = parte.slice(0, indice).trim();
+  const valor = parte.slice(indice + 1).trim();
+
+  if (chave) {
+    partesAssinatura[chave] = valor;
+  }
+}
+
+console.warn(
+  '[webhook] assinatura invalida',
+  {
+    dataId,
+    xRequestId,
+
+    temXSignature:
+      !!xSignature,
+
+    temTs:
+      !!partesAssinatura.ts,
+
+    temV1:
+      !!partesAssinatura.v1,
+
+    tamanhoV1:
+      partesAssinatura.v1?.length || 0,
+
+    inicioV1:
+      partesAssinatura.v1
+        ? partesAssinatura.v1.slice(0, 8)
+        : null,
+  }
+);
 
     return NextResponse.json(
       {
