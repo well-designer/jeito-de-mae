@@ -26,6 +26,57 @@ export const itemSchema = z.object({
   obs: z.string().max(250).optional().default(''),
 });
 
+/**
+ * Dados seguros retornados pelo Card Payment Brick
+ * do Mercado Pago.
+ *
+ * IMPORTANTE:
+ * número do cartão, CVV e validade NÃO passam pelo nosso servidor.
+ * O navegador envia apenas o token temporário criado pelo Mercado Pago.
+ */
+export const cartaoSchema = z.object({
+  token: z.string()
+    .trim()
+    .min(1, 'Token do cartao nao informado')
+    .max(500),
+
+  payment_method_id: z.string()
+    .trim()
+    .min(1, 'Meio de pagamento nao informado')
+    .max(80),
+
+  payment_type_id: z.string()
+    .trim()
+    .min(1)
+    .max(80)
+    .optional()
+    .default('credit_card'),
+
+  installments: z.coerce.number()
+    .int()
+    .min(1)
+    .max(24),
+
+  email: z.string()
+    .trim()
+    .email('Informe um e-mail valido')
+    .max(160),
+
+  identification: z.object({
+    type: z.string()
+      .trim()
+      .min(1)
+      .max(20),
+
+    number: z.string()
+      .trim()
+      .min(1)
+      .max(30),
+  })
+    .optional()
+    .nullable(),
+});
+
 export const pedidoSchema = z.object({
   nome: z.string().trim().min(3, 'Informe o nome completo').max(80),
 
@@ -54,13 +105,58 @@ export const pedidoSchema = z.object({
     .optional()
     .default(''),
 
-}).refine(
-  (d) => d.tipo !== 'entrega' || d.endereco.length >= 8,
-  {
-    message: 'Informe o endereco completo',
-    path: ['endereco'],
+  /*
+   * Só será preenchido quando pagamento === "credito".
+   *
+   * Para Pix e dinheiro esse campo pode não existir.
+   */
+  cartao: cartaoSchema
+    .optional(),
+
+}).superRefine((d, ctx) => {
+  /*
+   * Entrega exige endereço.
+   */
+  if (
+    d.tipo === 'entrega' &&
+    d.endereco.length < 8
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe o endereco completo',
+      path: ['endereco'],
+    });
   }
-);
+
+  /*
+   * Cartão exige os dados seguros gerados pelo
+   * Card Payment Brick.
+   */
+  if (
+    d.pagamento === 'credito' &&
+    !d.cartao
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Informe os dados do cartao',
+      path: ['cartao'],
+    });
+  }
+
+  /*
+   * Pix e dinheiro não devem carregar dados de cartão.
+   */
+  if (
+    d.pagamento !== 'credito' &&
+    d.cartao
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Dados de cartao enviados para uma forma de pagamento invalida',
+      path: ['cartao'],
+    });
+  }
+});
 
 export const opcaoSchema = z.object({
   nome: z.string().trim().min(1).max(40),
