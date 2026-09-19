@@ -1,7 +1,13 @@
 /** Cabecalhos de seguranca aplicados a todas as rotas. */
 const securityHeaders = [
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
   {
     key: 'Referrer-Policy',
     value: 'strict-origin-when-cross-origin',
@@ -25,11 +31,11 @@ const securityHeaders = [
 
       "style-src 'self' 'unsafe-inline' https://http2.mlstatic.com",
 
-      "img-src 'self' data: blob: https://*.supabase.co https://*.mercadopago.com https://*.mlstatic.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolivre.com https://*.mercadolibre.com",
 
-      "connect-src 'self' https://*.supabase.co https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com",
+      "connect-src 'self' https://*.supabase.co https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolivre.com https://*.mercadolibre.com",
 
-      "frame-src 'self' https://*.mercadopago.com https://*.mercadopago.com.br",
+      "frame-src 'self' https://*.mercadopago.com https://*.mercadopago.com.br https://*.mercadolivre.com https://*.mercadolibre.com",
 
       "font-src 'self' data: https://*.mlstatic.com",
 
