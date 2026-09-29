@@ -548,11 +548,14 @@ export async function consultarPagamento(
 /**
  * Valida a assinatura enviada pelo webhook do Mercado Pago.
  *
- * Esta versão também realiza um diagnóstico temporário
- * para descobrirmos exatamente qual formato de manifesto
- * corresponde à assinatura recebida.
+ * Para notificações de Orders, o data.id utilizado
+ * no manifesto é normalizado para letras minúsculas.
  *
- * Nenhuma chave secreta é exibida nos logs.
+ * Formato validado:
+ *
+ * id:{data.id};
+ * request-id:{x-request-id};
+ * ts:{timestamp};
  */
 export function assinaturaValida({
   xSignature,
@@ -609,90 +612,66 @@ export function assinaturaValida({
     return false;
   }
 
-  const idOriginal =
-    String(dataId);
-
-  const idMinusculo =
-    idOriginal.toLowerCase();
+  /*
+   * No webhook real da Orders API verificamos que
+   * o identificador da Order deve ser normalizado
+   * para minúsculas antes do cálculo do HMAC.
+   */
+  const id =
+    String(dataId)
+      .toLowerCase();
 
   const requestId =
     String(xRequestId);
 
-  /*
-   * Testamos algumas composições possíveis do manifesto.
-   *
-   * Isso é apenas diagnóstico.
-   * Continuamos aceitando o webhook somente se o HMAC
-   * calculado for exatamente igual ao recebido.
-   */
-  const variantes = {
-    original:
-      `id:${idOriginal};` +
-      `request-id:${requestId};` +
-      `ts:${ts};`,
+  const manifest =
+    `id:${id};` +
+    `request-id:${requestId};` +
+    `ts:${ts};`;
 
-    minusculo:
-      `id:${idMinusculo};` +
-      `request-id:${requestId};` +
-      `ts:${ts};`,
-
-    originalSemRequestId:
-      `id:${idOriginal};` +
-      `ts:${ts};`,
-
-    minusculoSemRequestId:
-      `id:${idMinusculo};` +
-      `ts:${ts};`,
-  };
+  const calculado =
+    crypto
+      .createHmac(
+        'sha256',
+        secret
+      )
+      .update(manifest)
+      .digest('hex');
 
   const recebido =
     String(v1)
       .trim()
       .toLowerCase();
 
-  const resultados = {};
-
-  for (
-    const [nome, manifest]
-    of Object.entries(variantes)
-  ) {
-    const calculado =
-      crypto
-        .createHmac(
-          'sha256',
-          secret
-        )
-        .update(manifest)
-        .digest('hex');
-
-    resultados[nome] =
-      calculado === recebido;
-  }
-
-  console.warn(
-    '[mercadopago] diagnostico assinatura',
-    {
-      dataId:
-        idOriginal,
-
-      xRequestId:
-        requestId,
-
-      resultados,
-    }
-  );
-
   /*
-   * Não ignoramos a segurança durante o diagnóstico.
-   *
-   * O webhook somente será aceito caso pelo menos uma
-   * das assinaturas calculadas corresponda exatamente
-   * à assinatura recebida do Mercado Pago.
+   * Comparamos os dois HMACs sem depender de comparação
+   * direta de strings.
    */
-  return Object
-    .values(resultados)
-    .some(
-      (resultado) =>
-        resultado === true
+  try {
+    const bufferCalculado =
+      Buffer.from(
+        calculado,
+        'hex'
+      );
+
+    const bufferRecebido =
+      Buffer.from(
+        recebido,
+        'hex'
+      );
+
+    if (
+      bufferCalculado.length !==
+      bufferRecebido.length
+    ) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(
+      bufferCalculado,
+      bufferRecebido
     );
+  } catch {
+    return false;
+  }
 }
