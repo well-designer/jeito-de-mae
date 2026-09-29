@@ -44,12 +44,10 @@ export async function POST(request) {
   }
 
   // ---------------------------------------------------------------
-  // DIAGNOSTICO TEMPORARIO
+  // Na notificacao de Order, data.id representa o ID da Order.
   //
-  // Precisamos comparar exatamente o que chega na URL
-  // com o data.id existente no corpo da notificacao.
-  //
-  // Nenhuma chave secreta e registrada aqui.
+  // Preferimos o ID recebido no corpo e usamos a query
+  // apenas como fallback.
   // ---------------------------------------------------------------
 
   const dataIdCorpo =
@@ -61,56 +59,6 @@ export async function POST(request) {
     request.nextUrl.searchParams.get('data.id') ||
     request.nextUrl.searchParams.get('data_id') ||
     '';
-
-  const queryRecebida =
-    Object.fromEntries(
-      request.nextUrl.searchParams.entries()
-    );
-
-  console.warn(
-    '[webhook] diagnostico requisicao recebida',
-    {
-      pathname:
-        request.nextUrl.pathname,
-
-      query:
-        queryRecebida,
-
-      dataIdCorpo,
-
-      dataIdQuery,
-
-      action:
-        corpo?.action || null,
-
-      type:
-        corpo?.type || null,
-
-      liveMode:
-        corpo?.live_mode ?? null,
-
-      applicationId:
-        corpo?.application_id != null
-          ? String(corpo.application_id)
-          : null,
-
-      userId:
-        corpo?.user_id != null
-          ? String(corpo.user_id)
-          : null,
-
-      xRequestId,
-
-      temXSignature:
-        !!xSignature,
-    }
-  );
-
-  // ---------------------------------------------------------------
-  // Na notificacao de Order, data.id representa o ID da Order.
-  // Mantemos, por enquanto, o mesmo comportamento existente:
-  // corpo primeiro e query como fallback.
-  // ---------------------------------------------------------------
 
   const dataId = String(
     dataIdCorpo ||
@@ -125,7 +73,7 @@ export async function POST(request) {
   }
 
   // ---------------------------------------------------------------
-  // Confere a assinatura da notificacao.
+  // Valida obrigatoriamente a assinatura da notificacao.
   // ---------------------------------------------------------------
 
   if (
@@ -135,67 +83,8 @@ export async function POST(request) {
       dataId,
     })
   ) {
-    const partesAssinatura = {};
-
-    for (
-      const parte of
-      String(xSignature || '').split(',')
-    ) {
-      const indice =
-        parte.indexOf('=');
-
-      if (indice === -1) {
-        continue;
-      }
-
-      const chave =
-        parte
-          .slice(0, indice)
-          .trim();
-
-      const valor =
-        parte
-          .slice(indice + 1)
-          .trim();
-
-      if (chave) {
-        partesAssinatura[chave] =
-          valor;
-      }
-    }
-
     console.warn(
-      '[webhook] assinatura invalida',
-      {
-        dataId,
-
-        dataIdCorpo,
-
-        dataIdQuery,
-
-        xRequestId,
-
-        temXSignature:
-          !!xSignature,
-
-        temTs:
-          !!partesAssinatura.ts,
-
-        temV1:
-          !!partesAssinatura.v1,
-
-        tamanhoV1:
-          partesAssinatura.v1?.length ||
-          0,
-
-        inicioV1:
-          partesAssinatura.v1
-            ? partesAssinatura.v1.slice(
-                0,
-                8
-              )
-            : null,
-      }
+      '[webhook] assinatura invalida'
     );
 
     return NextResponse.json(
