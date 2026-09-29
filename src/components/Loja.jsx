@@ -45,27 +45,61 @@ export default function Loja({ config, produtos }) {
     setTimeout(() => setToast(''), 2200);
   }
 
-  // ---- Consulta o pagamento enquanto a tela do Pix estiver aberta ----
+   // ---- Consulta o pagamento enquanto a tela do Pix estiver aberta ----
   useEffect(() => {
-    if (modal !== 'pix' || !pedidoFeito) return;
+    if (modal !== 'pix' || !pedidoFeito?.id) return;
 
-    const timer = setInterval(async () => {
+    let ativo = true;
+    let timer = null;
+
+    async function consultarPagamento() {
       try {
-        const r = await fetch(`/api/pedidos/status?id=${pedidoFeito.id}`, {
-          cache: 'no-store',
-        });
+        const r = await fetch(
+          `/api/pedidos/status?id=${encodeURIComponent(pedidoFeito.id)}&t=${Date.now()}`,
+          {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          }
+        );
+
+        if (!r.ok) {
+          throw new Error(`Falha ao consultar pagamento: ${r.status}`);
+        }
+
         const d = await r.json();
 
+        if (!ativo) return;
+
         if (d.status_pagamento === 'pago') {
-          clearInterval(timer);
           setPago(true);
           setModal('sucesso');
-        }
-      } catch {}
-    }, 5000);
 
-    return () => clearInterval(timer);
-  }, [modal, pedidoFeito]);
+          if (timer) {
+            clearInterval(timer);
+          }
+        }
+      } catch (e) {
+        console.error('[pix] erro ao consultar pagamento:', e);
+      }
+    }
+
+    // Consulta imediatamente ao abrir a tela do Pix.
+    consultarPagamento();
+
+    // Depois continua consultando enquanto o Pix estiver aberto.
+    timer = setInterval(consultarPagamento, 3000);
+
+    return () => {
+      ativo = false;
+
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [modal, pedidoFeito?.id]);
 
   function abrirProduto(p) {
     setProdutoSel(p);
