@@ -191,10 +191,6 @@ export async function criarPagamentoPix({
       email:
         email ||
         'cliente@jeitodemae.com.br',
-
-      // CENARIO DE TESTE DO PIX NO MERCADO PAGO.
-      // Remover antes de usar credenciais de producao.
-      first_name: 'APRO',
     },
   };
 
