@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,16 +20,46 @@ export async function GET() {
     const hostname = new URL(url).hostname;
     const projectRef = hostname.split('.')[0];
 
+    // Pedido usado apenas para diagnostico.
+    // No Supabase ele foi alterado manualmente para "pago".
+    const pedidoId = 'bbd6d397-e540-4d91-951d-53fad9368534';
+
+    const { data, error } = await supabaseAdmin()
+      .from('pedidos')
+      .select('id, codigo, status, status_pagamento, total')
+      .eq('id', pedidoId)
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json(
+        {
+          ok: false,
+          supabaseProject: projectRef,
+          hostname,
+          consultaBanco: {
+            sucesso: false,
+            erro: error.message,
+          },
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       supabaseProject: projectRef,
       hostname,
+      consultaBanco: {
+        sucesso: true,
+        pedidoEncontrado: !!data,
+        pedido: data || null,
+      },
     });
-  } catch {
+  } catch (e) {
     return NextResponse.json(
       {
         ok: false,
-        erro: 'URL do Supabase invalida',
+        erro: e instanceof Error ? e.message : 'Erro desconhecido',
       },
       { status: 500 }
     );
