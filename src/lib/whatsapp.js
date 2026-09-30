@@ -17,9 +17,17 @@ export async function avisarPedidoNovo(pedido) {
   const template = process.env.WHATSAPP_TEMPLATE || 'novo_pedido';
 
   if (!token || !phoneId || !destino) {
-    console.warn('[whatsapp] variaveis nao configuradas - aviso ignorado');
-    return { enviado: false, motivo: 'nao_configurado' };
-  }
+  console.warn('[whatsapp] variaveis nao configuradas', {
+    tokenConfigurado: !!token,
+    phoneIdConfigurado: !!phoneId,
+    destinoConfigurado: !!destino,
+  });
+
+  return {
+    enviado: false,
+    motivo: 'nao_configurado',
+  };
+}
 
   const resumo = (pedido.itens || [])
     .map((i) => `${i.qtd}x ${i.nome} (${i.opcao})`)
