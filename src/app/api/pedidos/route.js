@@ -818,10 +818,7 @@ export async function POST(request) {
           pedidoId:
             pedido.id,
 
-          // DIAGNOSTICO TEMPORARIO.
-          // Removeremos depois de encontrar a causa da falha.
-          diagnosticoPix:
-            mensagemErroPix,
+      
         },
         { status: 502 }
       );
