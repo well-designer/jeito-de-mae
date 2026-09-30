@@ -22,7 +22,7 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin()
       .from('pedidos')
-      .select('id, codigo, status, status_pagamento')
+      .select('codigo, status, status_pagamento')
       .eq('id', id)
       .maybeSingle();
 
@@ -30,10 +30,7 @@ export async function GET(request) {
       console.error('[status-pedido] erro Supabase:', error);
 
       return NextResponse.json(
-        {
-          erro: 'erro ao consultar pedido',
-          diagnostico: error.message,
-        },
+        { erro: 'erro ao consultar pedido' },
         {
           status: 500,
           headers: {
@@ -55,20 +52,7 @@ export async function GET(request) {
       );
     }
 
-    const resposta = {
-      codigo: data.codigo,
-      status: data.status,
-      status_pagamento: data.status_pagamento,
-
-      // Diagnostico temporario.
-      diagnostico: {
-        pedido_id: data.id,
-        consultado_em: new Date().toISOString(),
-        instancia: process.env.VERCEL_REGION || 'local',
-      },
-    };
-
-    return NextResponse.json(resposta, {
+    return NextResponse.json(data, {
       status: 200,
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
@@ -82,11 +66,7 @@ export async function GET(request) {
     console.error('[status-pedido] excecao:', e);
 
     return NextResponse.json(
-      {
-        erro: 'erro interno',
-        diagnostico:
-          e instanceof Error ? e.message : 'erro desconhecido',
-      },
+      { erro: 'erro interno' },
       {
         status: 500,
         headers: {
