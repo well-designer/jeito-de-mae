@@ -283,6 +283,42 @@ const lojaAbertaAgora =
   }
 }
 
+  async function testarNotificacao() {
+  try {
+    avisar('Enviando notificação...');
+
+    const resposta = await fetch(
+      '/api/admin/push',
+      {
+        method: 'PUT',
+      }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      throw new Error(
+        dados.erro ||
+          'Falha ao enviar notificação'
+      );
+    }
+
+    avisar(
+      `🔔 Notificação enviada para ${dados.enviados} aparelho(s)`
+    );
+  } catch (erro) {
+    console.error(
+      '[push] teste:',
+      erro
+    );
+
+    avisar(
+      erro?.message ||
+        'Falha ao enviar notificação'
+    );
+  }
+}
+  
   // Atualiza a lista de pedidos a cada 20s
   useEffect(() => {
     const t = setInterval(async () => {
@@ -1009,6 +1045,15 @@ const lojaAbertaAgora =
     🔔 Ativar notificações neste celular
   </button>
 
+        <button
+  type="button"
+  className="mini"
+  onClick={testarNotificacao}
+  style={{ marginLeft: 8 }}
+>
+  🧪 Testar notificação
+</button>
+        
   <div
     style={{
       marginTop: 6,
