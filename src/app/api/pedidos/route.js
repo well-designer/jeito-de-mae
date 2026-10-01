@@ -5,6 +5,8 @@ import { limitar, ipDe } from '@/lib/rateLimit';
 import { criarPagamentoPix, criarPagamentoCartao } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
 import { gerarCodigo } from '@/lib/format';
+import { enviarPushNovoPedido } from '@/lib/push';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -997,6 +999,22 @@ export async function POST(request) {
       pedido
     ).catch(() => {});
   }
+
+    // ---------------------------------------------------------------
+  // Notificacao Push
+  //
+  // Avisa todos os celulares autorizados que um novo pedido entrou.
+  // Uma falha no push nao impede a conclusao do pedido.
+  // ---------------------------------------------------------------
+
+  enviarPushNovoPedido(
+    pedido
+  ).catch((erro) => {
+    console.error(
+      '[pedidos] push:',
+      erro
+    );
+  });
 
   return NextResponse.json({
     ok: true,
