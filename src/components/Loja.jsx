@@ -32,7 +32,46 @@ export default function Loja({ config, produtos }) {
     tipo: 'entrega', pagamento: 'pix',
   });
 
-  const aberto = !!config.aberto;
+  const [agora, setAgora] = useState(() => new Date());
+
+useEffect(() => {
+  const timerHorario = setInterval(() => {
+    setAgora(new Date());
+  }, 30_000);
+
+  return () => clearInterval(timerHorario);
+}, []);
+
+const dentroDoHorario = (() => {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(agora);
+
+  const valor = (tipo) =>
+    partes.find((parte) => parte.type === tipo)?.value;
+
+  const dia = valor('weekday');
+  const hora = Number(valor('hour'));
+  const minuto = Number(valor('minute'));
+
+  // Domingo fechado.
+  if (dia === 'Sunday') {
+    return false;
+  }
+
+  // Segunda a sabado: 11:00 ate 16:00.
+  const minutosAgora = hora * 60 + minuto;
+  const abertura = 11 * 60;
+  const fechamento = 16 * 60;
+
+  return minutosAgora >= abertura && minutosAgora < fechamento;
+})();
+
+const aberto = !!config.aberto && dentroDoHorario;
   const taxa = form.tipo === 'retirada' ? 0 : Number(config.taxa_entrega || 0);
   const subtotal = useMemo(
     () => carrinho.reduce((s, i) => s + i.preco * i.qtd, 0), [carrinho]
