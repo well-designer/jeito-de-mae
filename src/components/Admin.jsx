@@ -169,6 +169,119 @@ const lojaAbertaAgora =
     setToast(m);
     setTimeout(() => setToast(''), 2200);
   }
+  async function ativarNotificacoes() {
+  try {
+    if (
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window)
+    ) {
+      return avisar(
+        'Este aparelho não suporta notificações push'
+      );
+    }
+
+    const permissao =
+      await Notification.requestPermission();
+
+    if (permissao !== 'granted') {
+      return avisar(
+        'Permissão de notificações não concedida'
+      );
+    }
+
+    avisar('Ativando notificações...');
+
+    const registro =
+      await navigator.serviceWorker.register('/sw.js');
+
+    await navigator.serviceWorker.ready;
+
+    const resposta = await fetch(
+      '/api/admin/push',
+      {
+        cache: 'no-store',
+      }
+    );
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok || !dados.publicKey) {
+      throw new Error(
+        dados.erro ||
+          'Não foi possível obter a chave de notificações'
+      );
+    }
+
+    const converterChave = (base64) => {
+      const padding =
+        '='.repeat(
+          (4 - (base64.length % 4)) % 4
+        );
+
+      const base64Seguro =
+        (base64 + padding)
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
+
+      const rawData =
+        window.atob(base64Seguro);
+
+      return Uint8Array.from(
+        [...rawData].map(
+          (char) => char.charCodeAt(0)
+        )
+      );
+    };
+
+    let subscription =
+      await registro.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription =
+        await registro.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey:
+            converterChave(dados.publicKey),
+        });
+    }
+
+    const salvar = await fetch(
+      '/api/admin/push',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscription:
+            subscription.toJSON(),
+        }),
+      }
+    );
+
+    const resultado =
+      await salvar.json();
+
+    if (!salvar.ok) {
+      throw new Error(
+        resultado.erro ||
+          'Não foi possível cadastrar este aparelho'
+      );
+    }
+
+    avisar('🔔 Notificações ativadas neste aparelho');
+  } catch (erro) {
+    console.error(
+      '[push] erro ao ativar notificações',
+      erro
+    );
+
+    avisar(
+      erro?.message ||
+        'Falha ao ativar notificações'
+    );
+  }
+}
 
   // Atualiza a lista de pedidos a cada 20s
   useEffect(() => {
@@ -882,6 +995,31 @@ const lojaAbertaAgora =
   </div>
 </div>
 
+      <div
+  style={{
+    marginTop: 12,
+    marginBottom: 18,
+  }}
+>
+  <button
+    type="button"
+    className="mini"
+    onClick={ativarNotificacoes}
+  >
+    🔔 Ativar notificações neste celular
+  </button>
+
+  <div
+    style={{
+      marginTop: 6,
+      fontSize: 12,
+      color: 'var(--muted)',
+    }}
+  >
+    Ative uma vez em cada celular que deve receber novos pedidos.
+  </div>
+</div>
+      
       <div className="tabs">
         {[
           [
