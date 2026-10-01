@@ -89,3 +89,36 @@ export async function POST(request) {
     ok: true,
   });
 }
+
+export async function PUT() {
+  if (!(await exigirAdmin())) {
+    return NextResponse.json(
+      { erro: 'nao autorizado' },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const resultado =
+      await enviarPushTeste();
+
+    return NextResponse.json({
+      ok: true,
+      enviados: resultado.enviados,
+    });
+  } catch (erro) {
+    console.error(
+      '[push] teste API:',
+      erro
+    );
+
+    return NextResponse.json(
+      {
+        erro:
+          erro?.message ||
+          'Falha ao enviar notificacao de teste',
+      },
+      { status: 500 }
+    );
+  }
+}
