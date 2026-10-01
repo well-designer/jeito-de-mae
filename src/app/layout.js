@@ -4,6 +4,15 @@ export const metadata = {
   title: 'Jeito de Mãe — Delícias Caseiras',
   description: 'Comida caseira feita na hora. Peça pelo site e receba em casa.',
   robots: { index: true, follow: true },
+
+  // PWA
+  manifest: '/manifest.webmanifest',
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Jeito de Mãe',
+  },
 };
 
 export const viewport = {
