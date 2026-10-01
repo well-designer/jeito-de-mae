@@ -102,6 +102,50 @@ function duracaoMediaTexto(minutos) {
 
 export default function Admin({ configInicial, produtosIniciais, pedidosIniciais, email }) {
   const [config, setConfig] = useState(configInicial);
+  const [agora, setAgora] = useState(() => new Date());
+
+useEffect(() => {
+  const timerHorario = setInterval(() => {
+    setAgora(new Date());
+  }, 30_000);
+
+  return () => clearInterval(timerHorario);
+}, []);
+
+const dentroDoHorario = (() => {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(agora);
+
+  const valor = (tipo) =>
+    partes.find((parte) => parte.type === tipo)?.value;
+
+  const dia = valor('weekday');
+  const hora = Number(valor('hour'));
+  const minuto = Number(valor('minute'));
+
+  // Domingo fechado
+  if (dia === 'Sunday') {
+    return false;
+  }
+
+  // Segunda a sabado: 11:00 ate 16:00
+  const minutosAgora = hora * 60 + minuto;
+  const abertura = 11 * 60;
+  const fechamento = 16 * 60;
+
+  return (
+    minutosAgora >= abertura &&
+    minutosAgora < fechamento
+  );
+})();
+
+const lojaAbertaAgora =
+  !!config.aberto && dentroDoHorario;
   const [produtos, setProdutos] = useState(produtosIniciais);
   const [pedidos, setPedidos] = useState(pedidosIniciais);
   const [aba, setAba] = useState('pedidos');
@@ -797,42 +841,46 @@ export default function Admin({ configInicial, produtosIniciais, pedidosIniciais
       </header>
 
       <div className="switch">
-        <button
-          className={`track ${
-            config.aberto
-              ? 'on'
-              : ''
-          }`}
-          onClick={() =>
-            salvarConfig({
-              aberto:
-                !config.aberto,
-            })
-          }
-        >
-          <span className="knob" />
-        </button>
+  <button
+    className={`track ${
+      config.aberto
+        ? 'on'
+        : ''
+    }`}
+    onClick={() =>
+      salvarConfig({
+        aberto:
+          !config.aberto,
+      })
+    }
+  >
+    <span className="knob" />
+  </button>
 
-        <div style={{ flex: 1 }}>
-          <b>
-            {config.aberto
-              ? 'Loja aberta'
-              : 'Loja fechada'}
-          </b>
+  <div style={{ flex: 1 }}>
+    <b>
+      {lojaAbertaAgora
+        ? '🟢 Aberto agora'
+        : !config.aberto
+          ? '🔴 Fechado manualmente'
+          : '🔴 Fechado pelo horário'}
+    </b>
 
-          <br />
+    <br />
 
-          <small
-            style={{
-              color: 'var(--muted)',
-            }}
-          >
-            {config.aberto
-              ? 'Os clientes conseguem fazer pedidos agora.'
-              : 'Ninguém consegue finalizar pedidos.'}
-          </small>
-        </div>
-      </div>
+    <small
+      style={{
+        color: 'var(--muted)',
+      }}
+    >
+      {lojaAbertaAgora
+        ? 'Os clientes conseguem fazer pedidos agora.'
+        : !config.aberto
+          ? 'Fechamento manual ativado. Ninguém consegue finalizar pedidos.'
+          : 'Fora do horário de funcionamento: segunda a sábado, das 11h às 16h.'}
+    </small>
+  </div>
+</div>
 
       <div className="tabs">
         {[
