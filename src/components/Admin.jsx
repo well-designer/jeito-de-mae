@@ -320,16 +320,76 @@ const lojaAbertaAgora =
 }
   
   // Atualiza a lista de pedidos a cada 20s
-  useEffect(() => {
-    const t = setInterval(async () => {
-      try {
-        const r = await fetch('/api/admin/pedidos', { cache: 'no-store' });
-        if (r.ok) setPedidos((await r.json()).pedidos);
-      } catch {}
-    }, 20000);
+// e toca o alerta somente quando entrar um pedido novo.
+useEffect(() => {
+  let primeiraConsulta = true;
 
-    return () => clearInterval(t);
-  }, []);
+  const atualizarPedidos = async () => {
+    try {
+      const r = await fetch(
+        '/api/admin/pedidos',
+        { cache: 'no-store' }
+      );
+
+      if (!r.ok) return;
+
+      const dados = await r.json();
+      const novosPedidos = dados.pedidos || [];
+
+      setPedidos((pedidosAtuais) => {
+        // Na primeira consulta não toca.
+        // Isso evita alertar pedidos antigos
+        // quando o painel é aberto.
+        if (primeiraConsulta) {
+          primeiraConsulta = false;
+          return novosPedidos;
+        }
+
+        const idsAtuais = new Set(
+          pedidosAtuais.map(
+            (pedido) => String(pedido.id)
+          )
+        );
+
+        const entrouPedidoNovo =
+          novosPedidos.some(
+            (pedido) =>
+              !idsAtuais.has(
+                String(pedido.id)
+              )
+          );
+
+        if (entrouPedidoNovo) {
+          const audio =
+            new Audio('/novo-pedido.mp3');
+
+          audio.volume = 1;
+
+          audio.play().catch((erro) => {
+            console.warn(
+              '[audio] O navegador bloqueou o som:',
+              erro
+            );
+          });
+        }
+
+        return novosPedidos;
+      });
+    } catch (erro) {
+      console.error(
+        '[pedidos] erro ao atualizar:',
+        erro
+      );
+    }
+  };
+
+  const t = setInterval(
+    atualizarPedidos,
+    20000
+  );
+
+  return () => clearInterval(t);
+}, []);
 
   async function salvarConfig(patch) {
     const novo = { ...config, ...patch };
