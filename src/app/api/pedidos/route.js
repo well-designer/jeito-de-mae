@@ -34,6 +34,49 @@ function diaAtualSaoPaulo() {
   return mapa[nomeDia];
 }
 
+/**
+ * Verifica o horario REAL de funcionamento da loja.
+ *
+ * Segunda a sabado:
+ * 11:00 ate 15:59.
+ *
+ * A partir das 16:00 a loja fica fechada.
+ * Domingo fica fechado o dia inteiro.
+ *
+ * O fuso e definido explicitamente porque o servidor da Vercel
+ * pode estar executando em UTC.
+ */
+function dentroDoHorarioDeFuncionamento() {
+  const agora = new Date();
+
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(agora);
+
+  const valor = (tipo) =>
+    partes.find((parte) => parte.type === tipo)?.value;
+
+  const dia = valor('weekday');
+  const hora = Number(valor('hour'));
+  const minuto = Number(valor('minute'));
+
+  // Domingo fechado.
+  if (dia === 'Sunday') {
+    return false;
+  }
+
+  // Segunda a sabado: 11:00 ate 16:00.
+  const minutosAgora = hora * 60 + minuto;
+  const abertura = 11 * 60;
+  const fechamento = 16 * 60;
+
+  return minutosAgora >= abertura && minutosAgora < fechamento;
+}
+
 export async function POST(request) {
   if (!limitar(`pedido:${ipDe(request)}`, 8, 60_000)) {
     return NextResponse.json(
@@ -74,6 +117,14 @@ export async function POST(request) {
 
   // -------------------------------------------------------------------
   // A loja esta aberta?
+  //
+  // Para aceitar um pedido, DUAS condicoes precisam ser verdadeiras:
+  //
+  // 1. O botao manual "aberto" precisa estar ligado.
+  // 2. Precisamos estar dentro do horario normal da loja.
+  //
+  // Dessa forma, o botao do Admin continua servindo como fechamento
+  // emergencial, mas nao consegue deixar a loja aberta de madrugada.
   // -------------------------------------------------------------------
 
   const { data: config } = await sb
@@ -82,9 +133,15 @@ export async function POST(request) {
     .eq('id', 1)
     .single();
 
-  if (!config?.aberto) {
+  const dentroDoHorario = dentroDoHorarioDeFuncionamento();
+
+  if (!config?.aberto || !dentroDoHorario) {
     return NextResponse.json(
-      { erro: 'A loja esta fechada no momento.' },
+      {
+        erro:
+          config?.mensagem_fechado ||
+          'A loja esta fechada no momento.',
+      },
       { status: 409 }
     );
   }
@@ -462,7 +519,8 @@ export async function POST(request) {
         );
       }
     }
-        // ---------------------------------------------------------------
+
+    // ---------------------------------------------------------------
     // Primeira compra.
     //
     // Se o cupom for marcado como "primeira compra",
@@ -817,8 +875,6 @@ export async function POST(request) {
 
           pedidoId:
             pedido.id,
-
-      
         },
         { status: 502 }
       );
