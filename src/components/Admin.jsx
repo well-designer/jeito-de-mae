@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { brl, CATEGORIAS } from '@/lib/format';
 import IconePrato from './IconePrato';
 import IconeImagem from './IconeImagem';
@@ -148,6 +148,10 @@ const lojaAbertaAgora =
   !!config.aberto && dentroDoHorario;
   const [produtos, setProdutos] = useState(produtosIniciais);
   const [pedidos, setPedidos] = useState(pedidosIniciais);
+
+  const audioPedidoRef = useRef(null);
+const [somPedidosAtivado, setSomPedidosAtivado] = useState(false);
+  
   const [aba, setAba] = useState('pedidos');
   const [editando, setEditando] = useState(null);
   const [toast, setToast] = useState('');
@@ -169,6 +173,35 @@ const lojaAbertaAgora =
     setToast(m);
     setTimeout(() => setToast(''), 2200);
   }
+
+  async function ativarSomPedidos() {
+  try {
+    if (!audioPedidoRef.current) {
+      audioPedidoRef.current = new Audio('/novo-pedido.mp3');
+      audioPedidoRef.current.volume = 1;
+      audioPedidoRef.current.preload = 'auto';
+    }
+
+    const audio = audioPedidoRef.current;
+
+    // O play precisa acontecer a partir do toque do usuário,
+    // especialmente no iPhone/Safari.
+    audio.currentTime = 0;
+    await audio.play();
+
+    // Para imediatamente: este primeiro play serve para
+    // liberar o áudio no navegador.
+    audio.pause();
+    audio.currentTime = 0;
+
+    setSomPedidosAtivado(true);
+    avisar('🔊 Som de novos pedidos ativado');
+  } catch (erro) {
+    console.error('[audio] erro ao ativar:', erro);
+    avisar('Não foi possível ativar o som neste aparelho');
+  }
+}
+  
   async function ativarNotificacoes() {
   try {
     if (
@@ -359,19 +392,18 @@ useEffect(() => {
               )
           );
 
-        if (entrouPedidoNovo) {
-          const audio =
-            new Audio('/novo-pedido.mp3');
+        if (entrouPedidoNovo && audioPedidoRef.current) {
+  const audio = audioPedidoRef.current;
 
-          audio.volume = 1;
+  audio.currentTime = 0;
 
-          audio.play().catch((erro) => {
-            console.warn(
-              '[audio] O navegador bloqueou o som:',
-              erro
-            );
-          });
-        }
+  audio.play().catch((erro) => {
+    console.warn(
+      '[audio] Não foi possível tocar o alerta:',
+      erro
+    );
+  });
+}
 
         return novosPedidos;
       });
