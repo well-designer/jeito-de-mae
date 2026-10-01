@@ -53,10 +53,13 @@ export async function enviarPushNovoPedido(pedido) {
       return;
     }
 
+    const retirada =
+      pedido.tipo === 'retirada';
+
     const tipo =
-      pedido.tipo === 'retirada'
-        ? 'Retirada'
-        : 'Entrega';
+      retirada
+        ? '🏪 Retirada'
+        : '🛵 Entrega';
 
     const valor = Number(
       pedido.total || 0
@@ -65,11 +68,41 @@ export async function enviarPushNovoPedido(pedido) {
       currency: 'BRL',
     });
 
+    const pagamentoBruto =
+      String(pedido.pagamento || '')
+        .toLowerCase();
+
+    const pagamento =
+      pagamentoBruto === 'pix'
+        ? 'Pix'
+        : pagamentoBruto === 'dinheiro'
+          ? 'Dinheiro'
+          : pagamentoBruto === 'cartao'
+            ? 'Cartão'
+            : pagamentoBruto === 'cartão'
+              ? 'Cartão'
+              : pedido.pagamento || 'Pagamento';
+
+    const cliente =
+      pedido.cliente_nome ||
+      'Cliente';
+
+    const codigo =
+      pedido.codigo ||
+      'Novo pedido';
+
     const payload = JSON.stringify({
-      title: `🔔 Novo pedido ${pedido.codigo}`,
-      body: `${pedido.cliente_nome} · ${tipo} · ${valor}`,
+      title: `🔔 NOVO PEDIDO — ${codigo}`,
+
+      body:
+        `${tipo} • ${cliente}\n` +
+        `💰 ${valor} • ${pagamento}`,
+
       url: '/admin',
+
       tag: `pedido-${pedido.id}`,
+
+      pedidoId: pedido.id,
     });
 
     await Promise.allSettled(
@@ -93,8 +126,8 @@ export async function enviarPushNovoPedido(pedido) {
               erro
           );
 
-          // A inscricao nao existe mais.
-          // Remove automaticamente do banco.
+          // Se a assinatura deixou de existir,
+          // remove automaticamente do banco.
           if (
             erro?.statusCode === 404 ||
             erro?.statusCode === 410
@@ -140,8 +173,12 @@ export async function enviarPushTeste() {
 
     const payload = JSON.stringify({
       title: '🔔 Teste Jeito de Mãe',
-      body: 'As notificações de novos pedidos estão funcionando!',
+
+      body:
+        'As notificações de novos pedidos estão funcionando!',
+
       url: '/admin',
+
       tag: `teste-${Date.now()}`,
     });
 
