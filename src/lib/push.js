@@ -116,3 +116,89 @@ export async function enviarPushNovoPedido(pedido) {
     );
   }
 }
+
+export async function enviarPushTeste() {
+  try {
+    configurarWebPush();
+
+    const sb = supabaseAdmin();
+
+    const { data: inscricoes, error } =
+      await sb
+        .from('push_subscriptions')
+        .select('id, endpoint, p256dh, auth');
+
+    if (error) {
+      throw error;
+    }
+
+    if (!inscricoes?.length) {
+      throw new Error(
+        'Nenhum aparelho cadastrado para notificacoes'
+      );
+    }
+
+    const payload = JSON.stringify({
+      title: '🔔 Teste Jeito de Mãe',
+      body: 'As notificações de novos pedidos estão funcionando!',
+      url: '/admin',
+      tag: `teste-${Date.now()}`,
+    });
+
+    const resultados =
+      await Promise.allSettled(
+        inscricoes.map(async (item) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: item.endpoint,
+                keys: {
+                  p256dh: item.p256dh,
+                  auth: item.auth,
+                },
+              },
+              payload
+            );
+
+            return true;
+          } catch (erro) {
+            if (
+              erro?.statusCode === 404 ||
+              erro?.statusCode === 410
+            ) {
+              await sb
+                .from('push_subscriptions')
+                .delete()
+                .eq('id', item.id);
+            }
+
+            throw erro;
+          }
+        })
+      );
+
+    const enviados =
+      resultados.filter(
+        (resultado) =>
+          resultado.status === 'fulfilled'
+      ).length;
+
+    if (enviados === 0) {
+      throw new Error(
+        'Nao foi possivel enviar a notificacao'
+      );
+    }
+
+    return {
+      ok: true,
+      enviados,
+    };
+  } catch (erro) {
+    console.error(
+      '[push] teste:',
+      erro
+    );
+
+    throw erro;
+  }
+}
