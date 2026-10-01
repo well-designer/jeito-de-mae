@@ -1,0 +1,12 @@
+{
+  "name": "Jeito de Mãe - Pedidos",
+  "short_name": "Jeito de Mãe",
+  "description": "Sistema de pedidos Jeito de Mãe Delícias Caseiras",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf5",
+  "theme_color": "#7a3e24",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR"
+}
