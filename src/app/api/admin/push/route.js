@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exigirAdmin } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { enviarPushTeste } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
