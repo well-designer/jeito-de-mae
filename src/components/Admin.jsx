@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { brl, CATEGORIAS } from '@/lib/format';
 import IconePrato from './IconePrato';
 import IconeImagem from './IconeImagem';
