@@ -416,12 +416,16 @@ useEffect(() => {
     }
   };
 
-  const t = setInterval(
-    atualizarPedidos,
-    20000
-  );
+  // Atualiza imediatamente ao abrir o Admin
+atualizarPedidos();
 
-  return () => clearInterval(t);
+// Depois continua verificando a cada 5 segundos
+const t = setInterval(
+  atualizarPedidos,
+  5000
+);
+
+return () => clearInterval(t);
 }, []);
 
   // Recebe novos pedidos em tempo real pelo Supabase.
