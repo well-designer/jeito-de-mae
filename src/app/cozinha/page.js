@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation';
 import { exigirAdmin } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import Cozinha from '@/components/cozinha';
+import CozinhaSync from '@/components/CozinhaSync';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function CozinhaPage() {
   // Segunda barreira de segurança.
@@ -31,8 +33,11 @@ export default async function CozinhaPage() {
   }
 
   return (
-    <Cozinha
-      pedidosIniciais={pedidos || []}
-    />
+    <>
+      <CozinhaSync />
+      <Cozinha
+        pedidosIniciais={pedidos || []}
+      />
+    </>
   );
 }
