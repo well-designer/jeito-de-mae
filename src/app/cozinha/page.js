@@ -21,7 +21,7 @@ export default async function CozinhaPage() {
   const { data: pedidos, error } = await sb
     .from('pedidos')
     .select('*')
-    .not('status', 'in', '("concluido","cancelado")')
+    .not('status', 'in', '(concluido,cancelado)')
     .order('criado_em', { ascending: true })
     .limit(120);
 
