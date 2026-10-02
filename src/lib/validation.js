@@ -78,6 +78,8 @@ export const cartaoSchema = z.object({
 });
 
 export const pedidoSchema = z.object({
+    checkout_id: z.string().uuid('Identificador de checkout invalido'),
+  
   nome: z.string().trim().min(3, 'Informe o nome completo').max(80),
 
   telefone: z.string().trim().refine(
