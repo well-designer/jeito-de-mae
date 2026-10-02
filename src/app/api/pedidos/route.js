@@ -1120,6 +1120,7 @@ if (!erroInsert) {
   // Uma falha no push nao impede a conclusao do pedido.
   // ---------------------------------------------------------------
 
+  if (pedidoFoiCriadoAgora) {
   enviarPushNovoPedido(
     pedido
   ).catch((erro) => {
@@ -1128,6 +1129,7 @@ if (!erroInsert) {
       erro
     );
   });
+}
 
   return NextResponse.json({
     ok: true,
