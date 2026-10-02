@@ -14,9 +14,11 @@ export default function CozinhaSync() {
       router.refresh();
     };
 
-    // Atualiza assim que a tela abre para evitar dados antigos do primeiro render.
-    atualizar();
+    const recarregar = () => {
+      window.location.reload();
+    };
 
+    // Tenta atualização leve via Realtime sempre que pedidos mudarem.
     const canal = supabase
       .channel('cozinha-pedidos')
       .on(
@@ -30,21 +32,19 @@ export default function CozinhaSync() {
       )
       .subscribe();
 
-    // Fallback: mesmo que o Realtime seja interrompido pelo navegador/rede,
-    // a cozinha se reconcilia periodicamente com o servidor.
-    const fallback = window.setInterval(atualizar, 10000);
+    // Fallback independente do Realtime/RLS: recarrega a página periodicamente.
+    // Assim a lista sempre volta a ser lida no servidor com service_role.
+    const fallback = window.setInterval(recarregar, 10000);
 
     const aoVoltar = () => {
-      if (document.visibilityState === 'visible') atualizar();
+      if (document.visibilityState === 'visible') recarregar();
     };
 
     document.addEventListener('visibilitychange', aoVoltar);
-    window.addEventListener('focus', atualizar);
 
     return () => {
       window.clearInterval(fallback);
       document.removeEventListener('visibilitychange', aoVoltar);
-      window.removeEventListener('focus', atualizar);
       supabase.removeChannel(canal);
     };
   }, [router]);
