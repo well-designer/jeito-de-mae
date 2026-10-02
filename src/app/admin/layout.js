@@ -29,7 +29,7 @@ export default function AdminLayout({ children }) {
           <span className="ico" aria-hidden="true">♨</span>
           Cozinha
         </Link>
-        <Link href="/admin#financeiro">
+        <Link href="/admin/financeiro">
           <span className="ico" aria-hidden="true">$</span>
           Financeiro
         </Link>
