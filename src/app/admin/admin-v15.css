@@ -1,13 +1,35 @@
-/* Jeito de Mae Admin V1.5 — camada visual segura, sem alterar regras de negocio */
-.admin-v15-shell{min-height:100vh;background:#f7f4f1;padding-bottom:86px}
-.admin-v15-top{position:sticky;top:0;z-index:90;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid #eadfda}
-.admin-v15-top-in{max-width:1180px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:12px}
-.admin-v15-mark{width:38px;height:38px;border-radius:12px;background:#8b263d;color:#fff;display:grid;place-items:center;font-weight:900;font-size:12px;letter-spacing:-.3px;box-shadow:0 6px 18px rgba(139,38,61,.18)}
-.admin-v15-title{min-width:0;flex:1}.admin-v15-title b{display:block;font-size:14px;line-height:1.15}.admin-v15-title small{display:block;color:#807477;font-size:11px;margin-top:2px}
-.admin-v15-actions{display:flex;gap:7px}.admin-v15-actions a{color:#7b263d;text-decoration:none;font-weight:800;font-size:12px;padding:8px 10px;border-radius:10px;background:#f7ecef}
+/* Jeito de Mae Admin V1.5 — mobile-first sem alterar regras de negocio */
+.admin-v15-shell{min-height:100vh;background:#f6f4f2;padding-bottom:88px;color:#211b1d}
+.admin-v15-top{position:sticky;top:0;z-index:90;background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-bottom:1px solid #eee6e2}
+.admin-v15-top-in{max-width:1180px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:11px}
+.admin-v15-mark{width:38px;height:38px;border-radius:13px;background:#8b263d;color:#fff;display:grid;place-items:center;font-weight:900;font-size:12px;box-shadow:0 6px 18px rgba(139,38,61,.18)}
+.admin-v15-title{min-width:0;flex:1}.admin-v15-title b{display:block;font-size:14px;line-height:1.15}.admin-v15-title small{display:block;color:#82787a;font-size:11px;margin-top:2px}
+.admin-v15-actions{display:flex;gap:7px}.admin-v15-actions a{color:#7b263d;text-decoration:none;font-weight:800;font-size:12px;padding:8px 10px;border-radius:11px;background:#f8ecef}
 .admin-v15-main{max-width:1180px;margin:0 auto}
-.admin-v15-bottom{position:fixed;left:0;right:0;bottom:0;z-index:130;display:none;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border-top:1px solid #eadfda;padding:7px 8px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(38,27,29,.08)}
-.admin-v15-bottom a{position:relative;text-align:center;text-decoration:none;color:#786f70;font-size:10.5px;font-weight:800;padding:7px 3px;border-radius:11px;line-height:1.15}.admin-v15-bottom a.active{color:#7b263d;background:#f8ecef}.admin-v15-bottom .ico{display:block;font-size:19px;line-height:20px;margin-bottom:3px}.admin-v15-badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#b3252b;color:#fff;font-size:9px;display:grid;place-items:center;border:2px solid #fff}
+.admin-v15-bottom{position:fixed;left:0;right:0;bottom:0;z-index:130;display:none;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.98);backdrop-filter:blur(18px);border-top:1px solid #eee6e2;padding:7px 8px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(38,27,29,.08)}
+.admin-v15-bottom a{position:relative;text-align:center;text-decoration:none;color:#82787a;font-size:10.5px;font-weight:800;padding:7px 3px;border-radius:12px;line-height:1.15}.admin-v15-bottom a.active{color:#7b263d;background:#f8ecef}.admin-v15-bottom .ico{display:block;font-size:19px;line-height:20px;margin-bottom:3px}.admin-v15-badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#b3252b;color:#fff;font-size:9px;display:grid;place-items:center;border:2px solid #fff}
 @media(max-width:700px){
-  body{padding-bottom:0!important;background:#f7f4f1!important}.admin-v15-bottom{display:grid}.admin-v15-top-in{padding:9px 12px}.admin-v15-actions a:first-child{display:none}.admin-v15-main .admin-wrap{padding:14px 12px 28px!important}.admin-v15-main .admin-wrap>header{display:none!important}.admin-v15-main .tabs{overflow-x:auto;display:flex;gap:7px;scrollbar-width:none;padding:3px 0 10px!important;margin:0 0 12px!important;position:sticky;top:57px;z-index:70;background:#f7f4f1}.admin-v15-main .tabs::-webkit-scrollbar{display:none}.admin-v15-main .tabs button{flex:0 0 auto;white-space:nowrap;border-radius:999px!important;padding:9px 13px!important;font-size:12px!important}.admin-v15-main .switch{border-radius:16px!important;box-shadow:0 4px 18px rgba(38,27,29,.05);background:#fff!important;border:1px solid #eadfda!important}.admin-v15-main .mini{min-height:38px}.admin-v15-main .order,.admin-v15-main .pedido{border-radius:17px!important;box-shadow:0 5px 20px rgba(38,27,29,.05)!important}.admin-v15-main h2.sec{font-size:18px!important}.admin-v15-main .row{flex-direction:column}.admin-v15-main table{font-size:12px}}
+ body{padding-bottom:0!important;background:#f6f4f2!important}
+ .admin-v15-bottom{display:grid}
+ .admin-v15-top-in{padding:9px 12px}
+ .admin-v15-actions a:first-child{display:none}
+ .admin-v15-main .admin-wrap{padding:12px 12px 30px!important}
+ .admin-v15-main .admin-wrap>header{display:none!important}
+ /* a barra inferior vira a navegacao principal no celular */
+ .admin-v15-main .tabs{display:none!important}
+ /* status da loja vira um card operacional compacto */
+ .admin-v15-main .switch{margin:2px 0 10px!important;padding:12px!important;border-radius:16px!important;box-shadow:0 4px 18px rgba(38,27,29,.05);background:#fff!important;border:1px solid #eee6e2!important}
+ .admin-v15-main .switch small{font-size:11px!important;line-height:1.35!important}
+ /* botoes tecnicos de notificacao ficam compactos e rolaveis, sem dominar a tela */
+ .admin-v15-main .switch+div{display:flex!important;gap:7px!important;overflow-x:auto!important;margin:0 -12px 14px!important;padding:0 12px 5px!important;scrollbar-width:none}
+ .admin-v15-main .switch+div::-webkit-scrollbar{display:none}
+ .admin-v15-main .switch+div>.mini{flex:0 0 auto!important;margin-left:0!important;min-height:34px!important;padding:7px 10px!important;font-size:11px!important;white-space:nowrap!important;background:#fff!important;border:1px solid #e9dfdb!important;border-radius:11px!important}
+ .admin-v15-main .switch+div>div{display:none!important}
+ .admin-v15-main .mini{min-height:38px}
+ .admin-v15-main .order,.admin-v15-main .pedido{border-radius:18px!important;box-shadow:0 5px 20px rgba(38,27,29,.055)!important;border-color:#eee6e2!important;background:#fff!important}
+ .admin-v15-main h2.sec{font-size:18px!important;letter-spacing:-.2px}
+ .admin-v15-main .row{flex-direction:column}
+ .admin-v15-main table{font-size:12px}
+ .admin-v15-main button{touch-action:manipulation}
+}
 @media(min-width:701px){.admin-v15-shell{padding-bottom:24px}.admin-v15-top{display:none}}
