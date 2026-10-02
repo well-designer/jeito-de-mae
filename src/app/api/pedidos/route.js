@@ -118,6 +118,52 @@ export async function POST(request) {
   const sb = supabaseAdmin();
 
   // -------------------------------------------------------------------
+// IDEMPOTENCIA DO CHECKOUT
+//
+// Se este checkout ja criou um pedido anteriormente,
+// nao permitimos criar outro pedido com o mesmo identificador.
+// -------------------------------------------------------------------
+
+const {
+  data: pedidoExistente,
+  error: erroPedidoExistente,
+} = await sb
+  .from('pedidos')
+  .select('id, codigo, subtotal, desconto, cupom_codigo, total, tipo')
+  .eq('checkout_id', dados.checkout_id)
+  .maybeSingle();
+
+if (erroPedidoExistente) {
+  console.error(
+    '[pedidos] verificar checkout existente:',
+    erroPedidoExistente
+  );
+
+  return NextResponse.json(
+    {
+      erro: 'Nao foi possivel verificar o pedido. Tente novamente.',
+    },
+    { status: 500 }
+  );
+}
+
+if (pedidoExistente) {
+  return NextResponse.json({
+    ok: true,
+    duplicado: true,
+    pedido: {
+      id: pedidoExistente.id,
+      codigo: pedidoExistente.codigo,
+      subtotal: pedidoExistente.subtotal,
+      desconto: pedidoExistente.desconto,
+      cupom: pedidoExistente.cupom_codigo,
+      total: pedidoExistente.total,
+      tipo: pedidoExistente.tipo,
+    },
+  });
+}
+
+  // -------------------------------------------------------------------
   // A loja esta aberta?
   //
   // Para aceitar um pedido, DUAS condicoes precisam ser verdadeiras:
@@ -657,7 +703,9 @@ export async function POST(request) {
   } = await sb
     .from('pedidos')
     .insert({
-      codigo: gerarCodigo(),
+  checkout_id: dados.checkout_id,
+
+  codigo: gerarCodigo(),
 
       cliente_nome: dados.nome,
 
