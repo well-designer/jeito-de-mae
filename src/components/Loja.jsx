@@ -321,6 +321,10 @@ if (!checkoutIdRef.current) {
       }
 
       setPedidoFeito(dados.pedido);
+      // O pedido foi concluido com sucesso.
+     // A proxima compra deve receber um novo checkout_id.
+checkoutIdRef.current = null;
+      
       setCarrinho([]);
       setCupomDigitado('');
       setCupomAplicado(null);
