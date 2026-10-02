@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { brl, CATEGORIAS } from '@/lib/format';
 import IconePrato from './IconePrato';
 import IconeSucesso from './IconeSucesso';
@@ -26,6 +26,11 @@ export default function Loja({ config, produtos }) {
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState('');
+
+  // Identificador único da tentativa de checkout.
+// É mantido entre novas tentativas para impedir
+// que o mesmo pedido seja criado duas vezes.
+const checkoutIdRef = useRef(null);
 
   const [form, setForm] = useState({
     nome: '', telefone: '', endereco: '', referencia: '',
@@ -246,7 +251,15 @@ const aberto = !!config.aberto && dentroDoHorario;
     setEnviando(true);
 
     try {
+      // Gera um identificador somente na primeira tentativa.
+// Se houver erro e o cliente tentar novamente,
+// reutilizamos exatamente o mesmo ID.
+if (!checkoutIdRef.current) {
+  checkoutIdRef.current = crypto.randomUUID();
+}
+      
       const payload = {
+        checkout_id: checkoutIdRef.current,
         nome: form.nome,
         telefone: form.telefone,
         endereco: form.endereco,
