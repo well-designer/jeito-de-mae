@@ -103,17 +103,24 @@ export async function POST(request) {
 
   const parsed = pedidoSchema.safeParse(corpo);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        erro:
-          parsed.error.issues[0]?.message ||
-          'Dados invalidos',
-      },
-      { status: 400 }
-    );
-  }
+if (!parsed.success) {
+  const primeiraFalha = parsed.error.issues[0];
 
+  console.error(
+    '[pedidos] validacao:',
+    parsed.error.issues
+  );
+
+  return NextResponse.json(
+    {
+      erro: primeiraFalha
+        ? `${primeiraFalha.path.join('.') || 'campo'}: ${primeiraFalha.message}`
+        : 'Dados invalidos',
+    },
+    { status: 400 }
+  );
+}
+  
   const dados = parsed.data;
   const sb = supabaseAdmin();
 
