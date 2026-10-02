@@ -129,7 +129,7 @@ const {
   error: erroPedidoExistente,
 } = await sb
   .from('pedidos')
-  .select('id, codigo, subtotal, desconto, cupom_codigo, total, tipo')
+  .select('id, codigo, subtotal, desconto, cupom_codigo, total, tipo, pagamento, status_pagamento, mp_order_id, mp_payment_id')
   .eq('checkout_id', dados.checkout_id)
   .maybeSingle();
 
@@ -147,7 +147,10 @@ if (erroPedidoExistente) {
   );
 }
 
-if (pedidoExistente) {
+if (
+  pedidoExistente &&
+  dados.pagamento === 'dinheiro'
+) {
   return NextResponse.json({
     ok: true,
     duplicado: true,
@@ -690,92 +693,154 @@ if (pedidoExistente) {
     ).toFixed(2)
   );
 
-  // -------------------------------------------------------------------
-  // Grava o pedido.
-  //
-  // "itens" ja e JSONB no Supabase, portanto os adicionais e a
-  // informacao do talher ficam armazenados junto com cada item.
-  // -------------------------------------------------------------------
+ // -------------------------------------------------------------------
+// Grava o pedido.
+//
+// "itens" ja e JSONB no Supabase, portanto os adicionais e a
+// informacao do talher ficam armazenados junto com cada item.
+//
+// checkout_id garante que uma mesma tentativa de checkout
+// nao consiga criar dois pedidos diferentes.
+// -------------------------------------------------------------------
 
+let pedido = null;
+let pedidoFoiCriadoAgora = false;
+
+const {
+  data: pedidoCriado,
+  error: erroInsert,
+} = await sb
+  .from('pedidos')
+  .insert({
+    checkout_id: dados.checkout_id,
+
+    codigo: gerarCodigo(),
+
+    cliente_nome: dados.nome,
+
+    // Mantemos o telefone exatamente como foi informado
+    // para exibicao no painel.
+    cliente_telefone: dados.telefone,
+
+    // E guardamos uma segunda versao somente com numeros
+    // para regras como primeira compra.
+    cliente_telefone_normalizado:
+      telefoneNormalizado,
+
+    cliente_endereco:
+      dados.tipo === 'entrega'
+        ? dados.endereco
+        : '',
+
+    cliente_referencia:
+      dados.tipo === 'entrega'
+        ? dados.referencia
+        : '',
+
+    tipo: dados.tipo,
+
+    itens,
+
+    subtotal,
+
+    taxa,
+
+    desconto,
+
+    cupom_codigo:
+      cupom
+        ? cupom.codigo
+        : null,
+
+    total,
+
+    pagamento: dados.pagamento,
+
+    status_pagamento: 'pendente',
+
+    status: 'novo',
+  })
+  .select()
+  .single();
+
+if (!erroInsert) {
+  pedido = pedidoCriado;
+  pedidoFoiCriadoAgora = true;
+} else if (erroInsert.code === '23505') {
+  // Outra requisicao com o mesmo checkout_id
+  // conseguiu criar o pedido primeiro.
+  //
+  // Recuperamos exatamente aquele pedido para evitar
+  // a criacao de um segundo pedido.
   const {
-    data: pedido,
-    error,
+    data: pedidoExistenteCheckout,
+    error: erroRecuperar,
   } = await sb
     .from('pedidos')
-    .insert({
-  checkout_id: dados.checkout_id,
+    .select('*')
+    .eq('checkout_id', dados.checkout_id)
+    .maybeSingle();
 
-  codigo: gerarCodigo(),
-
-      cliente_nome: dados.nome,
-
-      // Mantemos o telefone exatamente como foi informado
-      // para exibicao no painel.
-      cliente_telefone: dados.telefone,
-
-      // E guardamos uma segunda versao somente com numeros
-      // para regras como primeira compra.
-      cliente_telefone_normalizado:
-        telefoneNormalizado,
-
-      cliente_endereco:
-        dados.tipo === 'entrega'
-          ? dados.endereco
-          : '',
-
-      cliente_referencia:
-        dados.tipo === 'entrega'
-          ? dados.referencia
-          : '',
-
-      tipo: dados.tipo,
-
-      itens,
-
-      subtotal,
-
-      taxa,
-
-      desconto,
-
-      cupom_codigo:
-        cupom
-          ? cupom.codigo
-          : null,
-
-      total,
-
-      pagamento: dados.pagamento,
-
-      status_pagamento: 'pendente',
-
-      status: 'novo',
-    })
-    .select()
-    .single();
-
-  if (error) {
+  if (erroRecuperar || !pedidoExistenteCheckout) {
     console.error(
-      '[pedidos] insert:',
-      error
+      '[pedidos] recuperar checkout duplicado:',
+      erroRecuperar || erroInsert
     );
 
     return NextResponse.json(
       {
         erro:
-          'Nao foi possivel registrar o pedido',
+          'O pedido foi recebido, mas nao foi possivel recupera-lo. Tente novamente.',
       },
       { status: 500 }
     );
   }
 
+  pedido = pedidoExistenteCheckout;
+
+  // Para dinheiro nao existe processamento externo
+  // de pagamento a ser retomado.
+  if (dados.pagamento === 'dinheiro') {
+    return NextResponse.json({
+      ok: true,
+      duplicado: true,
+      pedido: {
+        id: pedido.id,
+        codigo: pedido.codigo,
+        subtotal: pedido.subtotal,
+        desconto: pedido.desconto,
+        cupom: pedido.cupom_codigo,
+        total: pedido.total,
+        tipo: pedido.tipo,
+      },
+    });
+  }
+
+  // Pix e cartao continuam abaixo utilizando o MESMO
+  // pedido.id. Assim a chave de idempotencia enviada
+  // ao Mercado Pago tambem continua sendo a mesma.
+} else {
+  console.error(
+    '[pedidos] insert:',
+    erroInsert
+  );
+
+  return NextResponse.json(
+    {
+      erro:
+        'Nao foi possivel registrar o pedido',
+    },
+    { status: 500 }
+  );
+}
+  
   // -------------------------------------------------------------------
   // Registra o uso do cupom.
   //
   // Isso acontece somente depois que o pedido realmente foi criado.
   // -------------------------------------------------------------------
 
-  if (cupom) {
+  if (cupom && pedidoFoiCriadoAgora) {
     const {
       error: erroUso,
     } = await sb
