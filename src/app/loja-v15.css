@@ -1,0 +1,27 @@
+/* Jeito de Mae Loja V1.5 — acabamento mobile-first, preserva checkout e regras */
+@media(max-width:700px){
+ body{padding-bottom:92px;background:#f7f7f7}
+ .topbar{background:#fff!important;color:#211b1d!important;overflow:visible;border-bottom:1px solid #eee;box-shadow:0 2px 14px rgba(0,0,0,.035)}
+ .topbar.tem-banner{padding:0}.topbar .banner-img,.topbar .banner-fade{display:none!important}
+ .topbar .wrap{padding:0 14px}
+ .topbar-in{align-items:center!important;padding:12px 0 8px!important;margin:0!important;gap:10px!important}
+ .topbar.tem-banner .topbar-in{padding-top:12px!important;margin-top:0!important}
+ .logo,.topbar.tem-banner .logo{width:46px!important;height:46px!important;flex:0 0 46px!important;border-radius:14px!important;padding:3px!important;border:0!important;background:#fff!important;box-shadow:none!important}
+ .topbar.tem-banner .topbar-in,.topbar.tem-banner .topbar-in *{color:inherit!important;text-shadow:none!important}
+ .brand h1{font-size:18px!important;line-height:1.1;color:#211b1d!important;text-shadow:none!important}
+ .brand p{display:none!important}.rating{margin-top:3px!important;color:#5f585a!important;text-shadow:none!important;font-size:11px!important}.rating small{font-size:10px}
+ .statusbar{margin:0 0 10px!important;padding:0!important;background:transparent!important;color:#665e60!important;text-shadow:none!important;gap:6px!important;font-size:11px!important;white-space:nowrap;overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:none}
+ .statusbar::-webkit-scrollbar{display:none}.statusbar *{color:#665e60!important}.statusbar .status-pill{color:#257247!important;background:#eaf7ef;padding:6px 9px;border-radius:999px}.statusbar .dot{width:7px;height:7px;flex-basis:7px;box-shadow:none!important}.statusbar .sep{display:none}.status-info{background:#f3f1f1;padding:6px 9px;border-radius:999px}.status-info svg{display:none}
+ .cats{top:0;margin-top:0;padding:9px 0;background:rgba(247,247,247,.96);backdrop-filter:blur(14px);border-bottom:1px solid #eee}
+ .cats-in{padding:0 14px;gap:7px}.cat{padding:8px 13px;font-size:12px;background:#fff;border-color:#e8e4e3}.cat.active{background:#8b263d;border-color:#8b263d}
+ main.wrap{padding:0 14px 24px}
+ h2.sec{font-size:19px;margin:22px 0 10px;color:#211b1d}
+ .grid{grid-template-columns:1fr!important;gap:9px!important}
+ .card{min-height:116px;border-radius:16px!important;border:1px solid #ece8e6!important;box-shadow:0 3px 14px rgba(35,24,27,.045)!important;background:#fff!important;align-items:stretch}
+ .card:hover{transform:none}.card-body{padding:13px!important}.card-body h3{font-size:15px!important;margin-bottom:4px!important}.card-body p{font-size:12px!important;line-height:1.35;-webkit-line-clamp:2;margin-bottom:9px!important}.price{font-size:15px!important;color:#7b263d!important}
+ .thumb.card-photo{width:118px!important;flex:0 0 118px!important;margin:8px;border-radius:13px!important;min-height:100px;background:#eee}.thumb.card-photo img{border-radius:13px}
+ .tag{font-size:9px!important;border-radius:999px!important;padding:3px 7px!important}
+ footer{display:none!important}
+ .cartbar{bottom:0;padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #eee}.cartbar-in{max-width:none}.cartbar .btn{border-radius:14px;padding:13px 15px;background:#8b263d}
+ .sheet-card{background:#f8f7f6;border-radius:24px 24px 0 0}.sheet-head{background:#f8f7f6}.sheet-body{padding:16px}.hero-img{height:210px}.inp,.opt{background:#fff}.btn{background:#8b263d}
+}
