@@ -1145,6 +1145,17 @@ useEffect(() => {
 >
   🧪 Testar notificação
 </button>
+
+        <button
+  type="button"
+  className="mini"
+  onClick={ativarSomPedidos}
+  style={{ marginLeft: 8 }}
+>
+  {somPedidosAtivado
+    ? '🔊 Som dos pedidos ativado ✓'
+    : '🔊 Ativar som dos pedidos'}
+</button>
         
   <div
     style={{
