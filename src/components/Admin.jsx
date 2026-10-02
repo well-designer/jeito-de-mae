@@ -424,6 +424,69 @@ useEffect(() => {
   return () => clearInterval(t);
 }, []);
 
+  // Recebe novos pedidos em tempo real pelo Supabase
+useEffect(() => {
+  const supabase = supabaseBrowser();
+
+  const channel = supabase
+    .channel('pedidos-admin')
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'pedidos',
+      },
+      async () => {
+        try {
+          const r = await fetch(
+            '/api/admin/pedidos',
+            { cache: 'no-store' }
+          );
+
+          if (!r.ok) return;
+
+          const dados = await r.json();
+          const novosPedidos =
+            dados.pedidos || [];
+
+          setPedidos(novosPedidos);
+
+          // Tenta tocar nosso alerta personalizado
+          // caso o aparelho permita reprodução automática.
+          if (audioPedidoRef.current) {
+            const audio =
+              audioPedidoRef.current;
+
+            audio.currentTime = 0;
+
+            audio.play().catch((erro) => {
+              console.warn(
+                '[realtime] áudio bloqueado:',
+                erro
+              );
+            });
+          }
+        } catch (erro) {
+          console.error(
+            '[realtime] erro ao atualizar pedidos:',
+            erro
+          );
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log(
+        '[realtime] status:',
+        status
+      );
+    });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+
   async function salvarConfig(patch) {
     const novo = { ...config, ...patch };
     setConfig(novo);
