@@ -424,69 +424,116 @@ useEffect(() => {
   return () => clearInterval(t);
 }, []);
 
-  // Recebe novos pedidos em tempo real pelo Supabase
+  // Recebe novos pedidos em tempo real pelo Supabase.
+// Se o Realtime falhar, o Admin continua funcionando
+// normalmente pelo polling de 20 segundos.
 useEffect(() => {
-  const supabase = supabaseBrowser();
+  let supabase = null;
+  let channel = null;
+  let ativo = true;
 
-  const channel = supabase
-    .channel('pedidos-admin')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'pedidos',
-      },
-      async () => {
-        try {
-          const r = await fetch(
-            '/api/admin/pedidos',
-            { cache: 'no-store' }
-          );
+  try {
+    supabase = supabaseBrowser();
 
-          if (!r.ok) return;
+    channel = supabase
+      .channel('pedidos-admin')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'pedidos',
+        },
+        async () => {
+          if (!ativo) return;
 
-          const dados = await r.json();
-          const novosPedidos =
-            dados.pedidos || [];
+          try {
+            const r = await fetch(
+              '/api/admin/pedidos',
+              { cache: 'no-store' }
+            );
 
-          setPedidos(novosPedidos);
+            if (!r.ok) return;
 
-          // Tenta tocar nosso alerta personalizado
-          // caso o aparelho permita reprodução automática.
-          if (audioPedidoRef.current) {
-            const audio =
-              audioPedidoRef.current;
+            const dados = await r.json();
 
-            audio.currentTime = 0;
+            if (!ativo) return;
 
-            audio.play().catch((erro) => {
+            const novosPedidos =
+              Array.isArray(dados?.pedidos)
+                ? dados.pedidos
+                : [];
+
+            setPedidos(novosPedidos);
+
+            // O áudio é opcional.
+            // Se falhar, nunca interfere no Admin.
+            try {
+              const audio =
+                audioPedidoRef.current;
+
+              if (audio) {
+                audio.currentTime = 0;
+
+                const playPromise =
+                  audio.play();
+
+                if (
+                  playPromise &&
+                  typeof playPromise.catch ===
+                    'function'
+                ) {
+                  playPromise.catch(() => {});
+                }
+              }
+            } catch (erroAudio) {
               console.warn(
-                '[realtime] áudio bloqueado:',
-                erro
+                '[realtime] áudio indisponível:',
+                erroAudio
               );
-            });
+            }
+          } catch (erro) {
+            console.warn(
+              '[realtime] atualização falhou. ' +
+                'Polling continua ativo:',
+              erro
+            );
           }
-        } catch (erro) {
-          console.error(
-            '[realtime] erro ao atualizar pedidos:',
-            erro
-          );
         }
-      }
-    )
-    .subscribe((status) => {
-      console.log(
-        '[realtime] status:',
-        status
-      );
-    });
+      )
+      .subscribe((status) => {
+        console.log(
+          '[realtime] status:',
+          status
+        );
+      });
+  } catch (erro) {
+    // IMPORTANTE:
+    // Realtime é opcional. Se ele não iniciar,
+    // o painel continua usando o polling de 20s.
+    console.warn(
+      '[realtime] indisponível. ' +
+        'Admin continuará pelo polling:',
+      erro
+    );
+  }
 
   return () => {
-    supabase.removeChannel(channel);
+    ativo = false;
+
+    try {
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
+    } catch (erro) {
+      console.warn(
+        '[realtime] erro ao encerrar canal:',
+        erro
+      );
+    }
   };
 }, []);
-
+  
   async function salvarConfig(patch) {
     const novo = { ...config, ...patch };
     setConfig(novo);
