@@ -6,7 +6,9 @@ export default function AdminLayout({ children }) {
     <div className="admin-v15-shell">
       <header className="admin-v15-top">
         <div className="admin-v15-top-in">
-          <div className="admin-v15-mark" aria-hidden="true">JM</div>
+          <div className="admin-v15-mark">
+            <img src="/jeito%20de%20m%C3%A3e%20logo%20new.png" alt="Jeito de Mãe" />
+          </div>
           <div className="admin-v15-title">
             <b>Jeito de Mãe</b>
             <small>Painel administrativo</small>
