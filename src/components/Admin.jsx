@@ -1156,6 +1156,36 @@ useEffect(() => {
     ? '🔊 Som dos pedidos ativado ✓'
     : '🔊 Ativar som dos pedidos'}
 </button>
+
+        <button
+  type="button"
+  className="mini"
+  onClick={async () => {
+    try {
+      if (!audioPedidoRef.current) {
+        audioPedidoRef.current =
+          new Audio('/novo-pedido.mp3');
+      }
+
+      const audio = audioPedidoRef.current;
+
+      audio.currentTime = 0;
+      audio.volume = 1;
+
+      await audio.play();
+    } catch (erro) {
+      console.error(
+        '[audio] teste falhou:',
+        erro
+      );
+
+      avisar('Não foi possível reproduzir o som');
+    }
+  }}
+  style={{ marginLeft: 8 }}
+>
+  ▶️ Testar som
+</button>
         
   <div
     style={{
