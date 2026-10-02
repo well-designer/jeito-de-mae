@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import Loja from '@/components/Loja';
+import './loja-v15.css';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
