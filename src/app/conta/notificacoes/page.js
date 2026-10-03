@@ -1,0 +1,8 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import CustomerBottomNav from '@/components/CustomerBottomNav';
+import '../../loja-v15.css';
+const KEY='jm_notificacoes';
+const PADRAO={pedidos:true,ofertas:true,novidades:false};
+export default function Notificacoes(){const[prefs,setPrefs]=useState(PADRAO);useEffect(()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d)setPrefs({...PADRAO,...d})}catch{}},[]);function mudar(k){setPrefs(p=>{const n={...p,[k]:!p[k]};try{localStorage.setItem(KEY,JSON.stringify(n))}catch{}return n})}return <><main className="customer-subpage settings-page"><header className="customer-subhead"><Link href="/conta">‹</Link><div><h1>Notificações</h1><p>Escolha o que você quer receber.</p></div></header><section className="settings-card"><button onClick={()=>mudar('pedidos')}><div><b>Atualizações do pedido</b><small>Recebido, preparo, saiu para entrega e concluído.</small></div><span className={`switch ${prefs.pedidos?'on':''}`}><i/></span></button><button onClick={()=>mudar('ofertas')}><div><b>Cupons e ofertas</b><small>Promoções e benefícios da Jeito de Mãe.</small></div><span className={`switch ${prefs.ofertas?'on':''}`}><i/></span></button><button onClick={()=>mudar('novidades')}><div><b>Novidades do cardápio</b><small>Novos pratos e novidades da loja.</small></div><span className={`switch ${prefs.novidades?'on':''}`}><i/></span></button></section><p className="settings-note">As preferências ficam salvas neste aparelho. Avisos essenciais relacionados a um pedido em andamento podem continuar aparecendo dentro do acompanhamento do pedido.</p></main><CustomerBottomNav/></>}
