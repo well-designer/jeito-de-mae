@@ -1,14 +1,8 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect,useState } from 'react';
 import CustomerBottomNav from '@/components/CustomerBottomNav';
 import '../loja-v15.css';
-
 const VAZIO={nome:'',telefone:'',cep:'',endereco:'',numero:'',complemento:'',bairro:''};
-export default function Conta(){
- const [form,setForm]=useState(VAZIO);const [salvo,setSalvo]=useState(false);
- useEffect(()=>{try{const d=JSON.parse(localStorage.getItem('jm_cliente')||'null');if(d)setForm({...VAZIO,...d});}catch{}},[]);
- async function buscarCep(){const cep=form.cep.replace(/\D/g,'');if(cep.length!==8)return;try{const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`);const d=await r.json();if(!d.erro)setForm(f=>({...f,endereco:d.logradouro||f.endereco,bairro:d.bairro||f.bairro}));}catch{}}
- function salvar(e){e.preventDefault();localStorage.setItem('jm_cliente',JSON.stringify(form));window.dispatchEvent(new Event('jm-cliente-atualizado'));setSalvo(true);setTimeout(()=>setSalvo(false),2200);}
- return <><main className="customer-page"><img className="customer-page-logo" src="/jeito%20de%20m%C3%A3e%20logo%20new.png" alt="Jeito de Mãe"/><h1>Sua conta</h1><p>Salve seus dados neste aparelho para facilitar seus próximos pedidos e definir seu endereço de entrega.</p><form className="customer-card" onSubmit={salvar}>{[['nome','Nome'],['telefone','WhatsApp'],['cep','CEP'],['endereco','Endereço'],['numero','Número'],['complemento','Complemento'],['bairro','Bairro']].map(([k,l])=><label key={k}>{l}<input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} onBlur={k==='cep'?buscarCep:undefined} inputMode={k==='telefone'?'tel':k==='cep'?'numeric':undefined}/></label>)}<button>Salvar meus dados</button>{salvo&&<div className="customer-success">Dados salvos neste aparelho ✓</div>}</form></main><CustomerBottomNav/></>;
-}
+const Icon=({type})=>{const p={user:'M20 21a8 8 0 0 0-16 0m12-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0',pin:'M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Zm0-9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',bag:'M6 8h12l1 13H5L6 8Zm3 0V6a3 3 0 0 1 6 0v2',ticket:'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Zm8 2v6',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4'};return <svg viewBox="0 0 24 24"><path d={p[type]}/></svg>};
+export default function Conta(){const [c,setC]=useState(VAZIO);useEffect(()=>{try{const d=JSON.parse(localStorage.getItem('jm_cliente')||'null');if(d)setC({...VAZIO,...d});}catch{}},[]);return <><main className="account-page"><section className="account-profile"><div className="account-avatar"><Icon type="user"/></div><div><h1>{c.nome?.trim()||'Sua conta'}</h1><p>{c.telefone?.trim()||'Adicione seus dados para agilizar seus pedidos'}</p></div><Link href="/conta/dados">›</Link></section><section className="account-menu"><Link href="/conta/dados"><span><Icon type="user"/></span><div><b>Meus dados</b><small>Nome e WhatsApp</small></div><i>›</i></Link><Link href="/conta/endereco"><span><Icon type="pin"/></span><div><b>Endereço de entrega</b><small>{c.endereco?`${c.endereco}${c.numero?`, ${c.numero}`:''}`:'Cadastre seu endereço'}</small></div><i>›</i></Link><Link href="/meus-pedidos"><span><Icon type="bag"/></span><div><b>Meus pedidos</b><small>Acompanhe seus pedidos</small></div><i>›</i></Link><button><span><Icon type="ticket"/></span><div><b>Cupons</b><small>Seus descontos aparecerão aqui</small></div><i>›</i></button><button><span><Icon type="bell"/></span><div><b>Notificações</b><small>Novidades, pedidos e benefícios</small></div><i>›</i></button></section><p className="account-footnote">Jeito de Mãe · feito para pedir de um jeito simples.</p></main><CustomerBottomNav/></>}
