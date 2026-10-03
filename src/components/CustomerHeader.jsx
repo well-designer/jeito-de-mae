@@ -18,6 +18,20 @@ export default function CustomerHeader(){
     return()=>{window.removeEventListener('storage',carregar);window.removeEventListener('jm-cliente-atualizado',carregar);};
   },[]);
 
+  useEffect(()=>{
+    const preencher=()=>{
+      let d;try{d=JSON.parse(localStorage.getItem('jm_cliente')||'null');}catch{return;}if(!d)return;
+      const mapa={Nome:d.nome,WhatsApp:d.telefone,CEP:d.cep,'Endereço':d.endereco,'Número':d.numero,'Complemento':d.complemento,'Bairro':d.bairro};
+      document.querySelectorAll('.sheet input.inp').forEach(el=>{
+        const valor=mapa[el.getAttribute('placeholder')];if(!valor||el.value)return;
+        const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+        if(setter){setter.call(el,valor);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
+      });
+    };
+    const obs=new MutationObserver(()=>setTimeout(preencher,0));obs.observe(document.body,{childList:true,subtree:true});
+    return()=>obs.disconnect();
+  },[]);
+
   const saudacao=useMemo(()=>{
     const hora=Number(new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
     return hora<12?'Bom dia':hora<18?'Boa tarde':'Boa noite';
