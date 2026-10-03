@@ -1,6 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import Loja from '@/components/Loja';
-import CustomerHeader from '@/components/CustomerHeader';
 import CustomerBottomNav from '@/components/CustomerBottomNav';
 import './loja-v15.css';
 
@@ -14,5 +13,5 @@ export default async function Home() {
     sb.from('produtos').select(`id,nome,descricao,categoria,opcoes,foto_url,destaque,ordem,dias_semana,adicionais,perguntar_talher`).eq('ativo', true).order('ordem'),
   ]);
 
-  return <><CustomerHeader/><Loja config={config || {}} produtos={produtos || []}/><CustomerBottomNav /></>;
+  return <><Loja config={config || {}} produtos={produtos || []}/><CustomerBottomNav /></>;
 }
