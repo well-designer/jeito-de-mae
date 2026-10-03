@@ -4,6 +4,7 @@ import { useEffect,useState } from 'react';
 import Link from 'next/link';
 import CustomerBottomNav from '@/components/CustomerBottomNav';
 import '../loja-v15.css';
+import './pedidos.css';
 
 export default function MeusPedidos() {
   const [codigo,setCodigo]=useState('');
