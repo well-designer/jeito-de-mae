@@ -152,6 +152,19 @@ export const pedidoSchema = z.object({
   }
 
   /*
+   * Troco só faz sentido para pagamento em dinheiro.
+   * A comparação com o total real continua sendo feita no servidor,
+   * depois que produtos, adicionais, cupom e entrega são recalculados.
+   */
+  if (d.pagamento !== 'dinheiro' && d.troco_para !== null && String(d.troco_para).trim() !== '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Troco enviado para uma forma de pagamento invalida',
+      path: ['troco_para'],
+    });
+  }
+
+  /*
    * Pix e dinheiro não devem carregar dados de cartão.
    */
   if (
