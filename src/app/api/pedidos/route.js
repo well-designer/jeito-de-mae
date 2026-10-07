@@ -764,6 +764,18 @@ const {
 
     pagamento: dados.pagamento,
 
+    troco_para:
+      dados.pagamento === 'dinheiro' &&
+      dados.troco_para !== null &&
+      dados.troco_para !== undefined &&
+      String(dados.troco_para).trim() !== ''
+        ? Number(
+            String(dados.troco_para)
+              .replace(/\./g, '')
+              .replace(',', '.')
+          )
+        : null,
+
     status_pagamento: 'pendente',
 
     status: 'novo',
