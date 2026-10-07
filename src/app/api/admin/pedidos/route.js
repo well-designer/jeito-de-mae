@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { exigirAdmin } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { statusPedidoSchema } from '@/lib/validation';
+import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,10 @@ export async function PATCH(request) {
       { status: 500 }
     );
   }
+
+  await processarFidelidadePedido(supabaseAdmin(), data).catch((erro) => {
+    console.error('[fidelidade] processar pedido:', erro);
+  });
 
   return NextResponse.json({
     pedido: data,
