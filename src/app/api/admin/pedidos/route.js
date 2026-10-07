@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createCipheriv, createHash, randomBytes, randomInt } from 'crypto';
 import { exigirOperacao } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { statusPedidoSchema } from '@/lib/validation';
