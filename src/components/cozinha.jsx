@@ -323,10 +323,10 @@ export default function Cozinha({
             JEITO DE MÃE
           </span>
 
-          <h1>Cozinha</h1>
+          <h1>{modo === 'atendimento' ? 'Atendimento' : 'Cozinha'}</h1>
 
           <p>
-            Pedidos em produção
+            {modo === 'atendimento' ? 'Pedidos e atendimento ao cliente' : 'Pedidos em produção'}
           </p>
         </div>
 
