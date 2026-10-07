@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { exigirAdmin } from '@/lib/supabaseServer';
+import { exigirOperacao } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { statusPedidoSchema } from '@/lib/validation';
 import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
@@ -7,7 +7,7 @@ import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!(await exigirAdmin())) {
+  if (!(await exigirOperacao())) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
-  if (!(await exigirAdmin())) {
+  if (!(await exigirOperacao())) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
