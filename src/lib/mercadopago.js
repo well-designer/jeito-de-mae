@@ -535,6 +535,11 @@ export async function consultarPagamento(
       ordem?.status_detail ||
       null,
 
+    amount:
+      pagamento?.amount ??
+      ordem?.total_amount ??
+      null,
+
     order:
       ordem,
   };
