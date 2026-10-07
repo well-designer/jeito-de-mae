@@ -93,6 +93,13 @@ export async function PATCH(request) {
     }
   }
 
+  if (usuario.papel === 'atendente' && patch.status === 'preparo') {
+    return NextResponse.json(
+      { erro: 'o inicio do preparo deve ser feito pela cozinha ou proprietario' },
+      { status: 403 }
+    );
+  }
+
   if (usuario.papel === 'cozinha' && patch.status === 'cancelado') {
     return NextResponse.json(
       { erro: 'a cozinha nao possui permissao para cancelar pedidos' },
