@@ -8,7 +8,7 @@ export default function CustomerBottomNav() {
   const itens = [
     {href:'/',label:'Início',outline:'/nav-home-outline.svg',filled:'/nav-home-filled.svg'},
     {href:'/meus-pedidos',label:'Pedidos',outline:'/nav-order-outline.svg',filled:'/nav-order-filled.svg'},
-    {href:'/fidelidade',label:'Fidelidade',outline:'/nav-heart-outline.svg',filled:'/nav-heart-filled.svg'},
+    {href:'/fidelidade',label:'Fidelidade',outline:'/nav-loyalty-outline.svg',filled:'/nav-loyalty-filled.svg'},
     {href:'/conta',label:'Conta',outline:'/nav-user-outline.svg',filled:'/nav-user-filled.svg'},
   ];
 
