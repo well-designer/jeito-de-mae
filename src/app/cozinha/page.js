@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { exigirAdmin } from '@/lib/supabaseServer';
+import { exigirCozinha } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import Cozinha from '@/components/cozinha';
 
@@ -9,7 +9,7 @@ export const revalidate = 0;
 export default async function CozinhaPage() {
   // Segunda barreira de segurança.
   // O middleware já verifica se existe uma sessão válida.
-  const user = await exigirAdmin();
+  const user = await exigirCozinha();
 
   if (!user) {
     redirect('/login');
