@@ -228,12 +228,14 @@ export default function Cozinha({
       pedido.status_pagamento !== 'pago'
     ) {
       const recebeu = window.confirm(
-        'O pagamento em dinheiro foi recebido?\n\nOK = Sim, marcar como pago\nCancelar = Ainda não'
+        'O pagamento em dinheiro foi recebido?\n\nConfirme somente depois de receber o valor.'
       );
 
-      if (recebeu) {
-        patch.status_pagamento = 'pago';
+      if (!recebeu) {
+        return;
       }
+
+      patch.status_pagamento = 'pago';
     }
 
     setAlterando(pedido.id);
@@ -252,11 +254,15 @@ export default function Cozinha({
         }
       );
 
+      const dados = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error();
+        throw new Error(
+          dados.erro ||
+          'Não foi possível atualizar o pedido.'
+        );
       }
 
-      const dados = await res.json();
       const pedidoAtualizado =
         dados.pedido || {
           ...pedido,
@@ -282,8 +288,9 @@ export default function Cozinha({
           )
         );
       }
-    } catch {
+    } catch (e) {
       setErro(
+        e?.message ||
         'Não foi possível atualizar o pedido.'
       );
     } finally {
