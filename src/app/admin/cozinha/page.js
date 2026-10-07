@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { exigirAdmin } from '@/lib/supabaseServer';
+import { exigirCozinha } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import Cozinha from '@/components/cozinha';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCozinhaPage() {
-  const user = await exigirAdmin();
+  const user = await exigirCozinha();
   if (!user) redirect('/login');
 
   const { data: pedidos, error } = await supabaseAdmin()
