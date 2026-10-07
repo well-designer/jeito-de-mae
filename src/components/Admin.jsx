@@ -531,6 +531,7 @@ useEffect(() => {
       body: JSON.stringify({
         aberto: !!novo.aberto,
         horarios_semana: novo.horarios_semana,
+        confirmacao_entrega: novo.confirmacao_entrega || 'desativado',
         prato_do_dia: novo.prato_do_dia || '',
         recado: novo.recado || '',
         mensagem_fechado: novo.mensagem_fechado || '',
@@ -3950,6 +3951,14 @@ useEffect(() => {
               </div>;
             })}
           </div>
+
+          <label className="f" style={{ marginTop: 22 }}>Confirmação da entrega</label>
+          <select className="inp" value={config.confirmacao_entrega || 'desativado'} onChange={(e)=>setConfig({...config,confirmacao_entrega:e.target.value})}>
+            <option value="desativado">Desativado — entregador confirma manualmente</option>
+            <option value="todas">Todas as entregas — código de 6 dígitos</option>
+            <option value="sob_demanda">Somente quando necessário</option>
+          </select>
+          <p style={{color:'var(--muted)',fontSize:12.5,margin:'6px 0 18px'}}>O código nunca é mostrado ao entregador. No modo “somente quando necessário”, a exigência poderá ser definida por pedido.</p>
 
           <label className="f">
             Taxa de entrega (R$)
