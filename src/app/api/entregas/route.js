@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exigirEntregador } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 export const dynamic='force-dynamic';
 
 export async function GET(){
@@ -27,5 +28,6 @@ export async function PATCH(request){
  }
  const {data,error}=await sb.from('pedidos').update(patch).eq('id',id).eq('status','entrega').select().single();
  if(error)return NextResponse.json({erro:'falha ao atualizar entrega'},{status:500});
+ if(acao==='entregue') await processarFidelidadePedido(sb,data).catch(e=>console.error('[fidelidade] entrega:',e));
  return NextResponse.json({pedido:data});
 }
