@@ -184,6 +184,38 @@ export async function POST(request) {
       : null;
 
   // ---------------------------------------------------------------
+  // Confere o valor confirmado diretamente na Order do Mercado Pago.
+  // Nunca marcamos o pedido como pago se o valor divergir do total
+  // calculado e gravado pelo servidor da loja.
+  // ---------------------------------------------------------------
+
+  const valorMercadoPago = Number(pagamento.amount);
+  const valorPedido = Number(pedido.total);
+
+  if (
+    pagamento.status === 'approved' &&
+    (
+      !Number.isFinite(valorMercadoPago) ||
+      !Number.isFinite(valorPedido) ||
+      Math.abs(valorMercadoPago - valorPedido) > 0.009
+    )
+  ) {
+    console.error(
+      '[webhook] valor divergente:',
+      {
+        pedidoId,
+        valorPedido,
+        valorMercadoPago,
+      }
+    );
+
+    return NextResponse.json(
+      { ok: false },
+      { status: 409 }
+    );
+  }
+
+  // ---------------------------------------------------------------
   // PAGAMENTO APROVADO
   //
   // consultarPagamento() converte "processed"
@@ -273,6 +305,14 @@ export async function POST(request) {
       'rejected',
     ].includes(pagamento.status)
   ) {
+    // Um evento tardio de cancelamento/expiracao nao pode
+    // rebaixar um pagamento que ja foi confirmado como pago.
+    if (pedido.status_pagamento === 'pago') {
+      return NextResponse.json({
+        ok: true,
+      });
+    }
+
     const atualizacao = {
       status_pagamento:
         'expirado',
