@@ -429,6 +429,13 @@ export default function Cozinha({
                   </span>
                 </div>
 
+                {pedido.pagamento === 'dinheiro' && (
+                  <div className="pedido-dinheiro">
+                    <span>Pagamento em dinheiro</span>
+                    <strong>{pedido.troco_para ? `Troco para ${brl(pedido.troco_para)}` : 'Sem troco informado'}</strong>
+                  </div>
+                )}
+
                 <div className="pedido-itens">
                   {(pedido.itens || []).map(
                     (item, indice) => (
@@ -713,6 +720,28 @@ export default function Cozinha({
         .pedido-cliente span {
           color: #786f70;
           font-size: 13px;
+        }
+
+        .pedido-dinheiro {
+          margin: 14px 18px 4px;
+          padding: 11px 13px;
+          border-radius: 10px;
+          background: #fff4dd;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .pedido-dinheiro span {
+          color: #7a5417;
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .pedido-dinheiro strong {
+          color: #5c3b0c;
+          font-size: 14px;
         }
 
         .pedido-itens {
