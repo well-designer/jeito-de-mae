@@ -65,3 +65,7 @@ export async function exigirCozinha() {
 export async function exigirEntregador() {
   return exigirPapel(PAPEIS.entregador);
 }
+
+export async function exigirOperacao() {
+  return exigirPapel(['admin', 'proprietario', 'atendente', 'cozinha']);
+}
