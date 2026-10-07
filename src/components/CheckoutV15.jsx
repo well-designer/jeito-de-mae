@@ -18,6 +18,7 @@ export default function CheckoutV15({
   enviando,
   aberto,
   finalizarPedido,
+  cartaoSlot,
   onBack,
 }) {
   const etapaPagamento = form.tipo === 'entrega' ? '4' : '3';
@@ -70,6 +71,7 @@ export default function CheckoutV15({
               </button>
             ))}
           </div>
+          {form.pagamento === 'credito' && cartaoSlot}
           {form.pagamento === 'dinheiro' && (
             <div className="checkout-change">
               <label><span>Precisa de troco?</span><input inputMode="decimal" placeholder="Ex.: 50,00 — deixe em branco se não precisar" value={form.trocoPara} onChange={e => setForm({ ...form, trocoPara: e.target.value })}/></label>
@@ -96,7 +98,7 @@ export default function CheckoutV15({
       </div>
 
       <footer className="checkout-action">
-        <button type="button" disabled={enviando || !aberto} onClick={finalizarPedido}><span>{enviando ? 'Enviando...' : aberto ? 'Fazer pedido' : 'Loja fechada'}</span><b>{total}</b></button>
+        {form.pagamento !== 'credito' ? <button type="button" disabled={enviando || !aberto} onClick={() => finalizarPedido()}><span>{enviando ? 'Enviando...' : aberto ? 'Fazer pedido' : 'Loja fechada'}</span><b>{total}</b></button> : <small>Preencha o cartão acima e confirme o pagamento com segurança.</small>}
       </footer>
     </div>
   );
