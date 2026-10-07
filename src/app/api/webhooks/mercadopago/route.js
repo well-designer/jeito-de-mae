@@ -5,6 +5,7 @@ import {
   consultarPagamento,
 } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
+import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -265,9 +266,27 @@ export async function POST(request) {
       //
       // Nao alteramos para "preparo" automaticamente.
 
+      const pedidoPago = atualizado || {
+        ...pedido,
+        status_pagamento: 'pago',
+      };
+
       avisarPedidoNovo(
-        atualizado || pedido
+        pedidoPago
       ).catch(() => {});
+
+      // Se o pedido ja tiver sido concluido quando a confirmacao
+      // do pagamento chegar, libera os pontos neste momento.
+      // A operacao e idempotente no banco.
+      processarFidelidadePedido(
+        sb,
+        pedidoPago
+      ).catch((erro) => {
+        console.error(
+          '[webhook] fidelidade:',
+          erro
+        );
+      });
     } else {
       // Mesmo se o pedido ja estiver pago,
       // mantemos os IDs do Mercado Pago sincronizados.
