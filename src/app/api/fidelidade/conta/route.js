@@ -10,7 +10,7 @@ export async function GET(request){
  const user=await usuario(request);if(!user)return NextResponse.json({erro:'Autenticação necessária.'},{status:401});
  const sb=supabaseAdmin();const [{data:cfg},{data:recompensas},{data:cliente}]=await Promise.all([
   sb.from('fidelidade_config').select('ativo,reais_por_ponto,pedido_minimo,validade_dias').eq('id',1).maybeSingle(),
-  sb.from('fidelidade_recompensas').select('id,nome,descricao,pontos').eq('ativo',true).order('ordem'),
+  sb.from('fidelidade_recompensas').select('id,nome,descricao,pontos,produto_id,produtos(id,nome,foto_url,ativo)').eq('ativo',true).order('ordem'),
   sb.from('fidelidade_clientes').select('id,nome,saldo,email').eq('auth_user_id',user.id).maybeSingle()
  ]);
  if(!cliente)return NextResponse.json({config:cfg||null,cliente:null,recompensas:recompensas||[],movimentos:[]});
