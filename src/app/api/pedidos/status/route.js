@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHash, timingSafeEqual } from 'crypto';
+import { createDecipheriv, createHash, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin()
       .from('pedidos')
-.select('codigo, status, status_pagamento, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash')
+.select('codigo, status, status_pagamento, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash, entrega_codigo_cliente_cifrado')
       .eq('id', id)
       .maybeSingle();
 
@@ -59,8 +59,20 @@ export async function GET(request) {
       const recebido = Buffer.from(createHash('sha256').update(token).digest('hex'), 'hex');
       const esperado = Buffer.from(data.acompanhamento_token_hash, 'hex');
       if (recebido.length === esperado.length && timingSafeEqual(recebido, esperado)) {
-        // O código original nunca é armazenado. Códigos criados depois do pedido
-        // serão entregues ao cliente por um segredo temporário separado.
+        const partes = String(data.entrega_codigo_cliente_cifrado || '').split('.');
+        if (partes.length === 3) {
+          try {
+            const chave = createHash('sha256').update(token).digest();
+            const dec = createDecipheriv('aes-256-gcm', chave, Buffer.from(partes[0], 'hex'));
+            dec.setAuthTag(Buffer.from(partes[1], 'hex'));
+            codigo_entrega = Buffer.concat([
+              dec.update(Buffer.from(partes[2], 'hex')),
+              dec.final(),
+            ]).toString('utf8');
+          } catch {
+            codigo_entrega = null;
+          }
+        }
       }
     }
     const resposta = { codigo: data.codigo, status: data.status, status_pagamento: data.status_pagamento, entrega_codigo_necessario: data.entrega_codigo_necessario, codigo_entrega };
