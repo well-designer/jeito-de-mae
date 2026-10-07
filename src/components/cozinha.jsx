@@ -197,8 +197,24 @@ export default function Cozinha({
       10000
     );
 
-    return () =>
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') {
+        carregarPedidos();
+      }
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      aoVoltar
+    );
+
+    return () => {
       clearInterval(atualizacao);
+      document.removeEventListener(
+        'visibilitychange',
+        aoVoltar
+      );
+    };
   }, []);
 
   useEffect(() => {
