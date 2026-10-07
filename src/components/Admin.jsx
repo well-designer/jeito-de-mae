@@ -1866,7 +1866,7 @@ useEffect(() => {
                           }
 
                           atualizarPedido(p.id, patch);
-                        }
+                        }}
                       >
                         {rotulo}
                       </button>
