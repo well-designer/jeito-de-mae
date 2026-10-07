@@ -6,6 +6,7 @@ import { criarPagamentoPix, criarPagamentoCartao } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
 import { gerarCodigo } from '@/lib/format';
 import { enviarPushNovoPedido } from '@/lib/push';
+import { prepararCreditoFidelidade } from '@/lib/fidelidade';
 
 
 export const runtime = 'nodejs';
@@ -1128,6 +1129,7 @@ if (!erroInsert) {
   // ---------------------------------------------------------------
 
   if (pedidoFoiCriadoAgora) {
+  prepararCreditoFidelidade(sb,pedido).catch((erro)=>console.error('[pedidos] fidelidade:',erro));
   enviarPushNovoPedido(
     pedido
   ).catch((erro) => {
