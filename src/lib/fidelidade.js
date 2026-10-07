@@ -14,12 +14,8 @@ export async function prepararCreditoFidelidade(sb,pedido){
  await sb.from('fidelidade_movimentos').upsert({cliente_id:cliente.id,pedido_id:pedido.id,tipo:'credito',pontos,status:'pendente',descricao:'Pontos do pedido '+(pedido.codigo||''),expira_em},{onConflict:'pedido_id',ignoreDuplicates:true});
 }
 export async function liberarCreditoFidelidade(sb,pedido){
- if(!pedido?.id||pedido.status!=='concluido'||pedido.status_pagamento!=='pago')return;
- const {data:mov}=await sb.from('fidelidade_movimentos').select('id,cliente_id,pontos,status').eq('pedido_id',pedido.id).eq('tipo','credito').maybeSingle();
- if(!mov||mov.status!=='pendente')return;
- const {data:cliente}=await sb.from('fidelidade_clientes').select('saldo').eq('id',mov.cliente_id).single();if(!cliente)return;
- const novo=Number(cliente.saldo||0)+Number(mov.pontos||0);
- const {error}=await sb.from('fidelidade_clientes').update({saldo:novo,atualizado_em:new Date().toISOString()}).eq('id',mov.cliente_id).eq('saldo',cliente.saldo);
- if(error)return;
- await sb.from('fidelidade_movimentos').update({status:'disponivel'}).eq('id',mov.id).eq('status','pendente');
+ if(!pedido?.id||pedido.status!=='concluido'||pedido.status_pagamento!=='pago')return false;
+ const {data,error}=await sb.rpc('liberar_pontos_fidelidade',{p_pedido_id:pedido.id});
+ if(error){console.error('[fidelidade] liberar pontos:',error);return false}
+ return data===true;
 }
