@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createHash, randomInt } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
@@ -702,6 +703,9 @@ if (
 
 let pedido = null;
 let pedidoFoiCriadoAgora = false;
+let codigoEntrega = null;
+const exigeCodigoEntrega = dados.tipo === 'entrega' && config?.confirmacao_entrega === 'todas';
+if (exigeCodigoEntrega) codigoEntrega = String(randomInt(0, 1000000)).padStart(6, '0');
 
 const {
   data: pedidoCriado,
@@ -769,6 +773,9 @@ const {
         : null,
 
     status_pagamento: 'pendente',
+
+    entrega_codigo_necessario: exigeCodigoEntrega,
+    entrega_codigo_hash: codigoEntrega ? createHash('sha256').update(codigoEntrega).digest('hex') : null,
 
     status: 'novo',
   })
@@ -1167,6 +1174,8 @@ if (!erroInsert) {
 
       tipo:
         pedido.tipo,
+
+      codigo_entrega: codigoEntrega,
     },
 
     pix,
