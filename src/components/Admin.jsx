@@ -1850,14 +1850,22 @@ useEffect(() => {
                     {prox && (
                       <button
                         className="mini"
-                        onClick={() =>
-                          atualizarPedido(
-                            p.id,
-                            {
-                              status:
-                                prox,
-                            }
-                          )
+                        onClick={() => {
+                          const patch = { status: prox };
+
+                          if (
+                            prox === 'concluido' &&
+                            p.pagamento === 'dinheiro' &&
+                            p.status_pagamento !== 'pago'
+                          ) {
+                            const recebeu = window.confirm(
+                              'O pagamento em dinheiro foi recebido?\\n\\nConfirme somente depois de receber o valor.'
+                            );
+                            if (!recebeu) return;
+                            patch.status_pagamento = 'pago';
+                          }
+
+                          atualizarPedido(p.id, patch);
                         }
                       >
                         {rotulo}
