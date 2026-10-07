@@ -73,6 +73,8 @@ alter table public.fidelidade_config enable row level security;
 alter table public.fidelidade_recompensas enable row level security;
 alter table public.fidelidade_clientes enable row level security;
 alter table public.fidelidade_movimentos enable row level security;
+create index if not exists fidelidade_resgates_recompensa_id_idx on public.fidelidade_resgates(recompensa_id);
+
 alter table public.fidelidade_resgates enable row level security;
 
 create or replace function public.liberar_pontos_fidelidade(p_pedido_id uuid)
