@@ -93,13 +93,6 @@ export async function PATCH(request) {
     }
   }
 
-  if (patch.status === 'concluido' && atual.tipo === 'entrega') {
-    return NextResponse.json(
-      { erro: 'pedidos para entrega devem ser concluidos pela area de entregas' },
-      { status: 409 }
-    );
-  }
-
   if (usuario.papel === 'cozinha' && patch.status === 'cancelado') {
     return NextResponse.json(
       { erro: 'a cozinha nao possui permissao para cancelar pedidos' },
