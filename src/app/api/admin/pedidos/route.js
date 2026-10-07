@@ -50,7 +50,7 @@ export async function PATCH(request) {
 
   const { data: atual, error: erroAtual } = await sb
     .from('pedidos')
-    .select('id,status,status_pagamento,tipo')
+    .select('id,status,status_pagamento,tipo,pagamento')
     .eq('id', id)
     .maybeSingle();
 
@@ -67,6 +67,28 @@ export async function PATCH(request) {
       { erro: 'pedido nao encontrado' },
       { status: 404 }
     );
+  }
+
+  if (
+    patch.status_pagamento &&
+    patch.status_pagamento !== atual.status_pagamento
+  ) {
+    const recebimentoDinheiro =
+      atual.pagamento === 'dinheiro' &&
+      patch.status_pagamento === 'pago' &&
+      patch.status === 'concluido';
+
+    if (!recebimentoDinheiro) {
+      return NextResponse.json(
+        {
+          erro:
+            atual.pagamento === 'dinheiro'
+              ? 'o pagamento em dinheiro so pode ser confirmado ao concluir o pedido'
+              : 'pagamentos eletronicos so podem ser confirmados pelo provedor de pagamento',
+        },
+        { status: 409 }
+      );
+    }
   }
 
   if (patch.status && patch.status !== atual.status) {
