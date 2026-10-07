@@ -152,6 +152,11 @@ const [somPedidosAtivado, setSomPedidosAtivado] = useState(false);
   const [carregandoCupons, setCarregandoCupons] = useState(false);
   const [salvandoCupom, setSalvandoCupom] = useState(false);
   const [mostrarFinalizados, setMostrarFinalizados] = useState(false);
+  const [fidelidade, setFidelidade] = useState(null);
+  const [recompensas, setRecompensas] = useState([]);
+  const [novaRecompensa, setNovaRecompensa] = useState({ produto_id: '', pontos: '', descricao: '' });
+  const [carregandoFidelidade, setCarregandoFidelidade] = useState(false);
+  const [salvandoRecompensa, setSalvandoRecompensa] = useState(false);
 
   function avisar(m) {
     setToast(m);
@@ -1104,6 +1109,55 @@ useEffect(() => {
     avisar('Cupom excluído');
   }
 
+  useEffect(() => {
+    if (aba !== 'fidelidade') return;
+    let ativo = true;
+    setCarregandoFidelidade(true);
+    fetch('/api/admin/fidelidade', { cache: 'no-store' })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erro || 'Falha ao carregar fidelidade');
+        if (ativo) {
+          setFidelidade(d.config || null);
+          setRecompensas(d.recompensas || []);
+        }
+      })
+      .catch((e) => ativo && avisar(e.message || 'Falha ao carregar fidelidade'))
+      .finally(() => ativo && setCarregandoFidelidade(false));
+    return () => { ativo = false; };
+  }, [aba]);
+
+  async function criarRecompensa() {
+    const pontos = Number(novaRecompensa.pontos);
+    if (!novaRecompensa.produto_id) return avisar('Escolha um produto');
+    if (!Number.isInteger(pontos) || pontos <= 0) return avisar('Informe uma quantidade válida de pontos');
+    setSalvandoRecompensa(true);
+    try {
+      const r = await fetch('/api/admin/fidelidade/recompensas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...novaRecompensa, pontos }),
+      });
+      const d = await r.json();
+      if (!r.ok) return avisar(d.erro || 'Falha ao criar recompensa');
+      setRecompensas((lista) => [...lista, d.recompensa].sort((a, b) => a.pontos - b.pontos));
+      setNovaRecompensa({ produto_id: '', pontos: '', descricao: '' });
+      avisar('Recompensa criada');
+    } catch {
+      avisar('Falha ao criar recompensa');
+    } finally {
+      setSalvandoRecompensa(false);
+    }
+  }
+
+  async function desativarRecompensa(id) {
+    const r = await fetch(`/api/admin/fidelidade/recompensas?id=${id}`, { method: 'DELETE' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return avisar(d.erro || 'Falha ao desativar recompensa');
+    setRecompensas((lista) => lista.map((x) => x.id === id ? { ...x, ativo: false } : x));
+    avisar('Recompensa desativada');
+  }
+
   const novos = pedidos.filter(
     (p) => p.status === 'novo'
   ).length;
@@ -1319,6 +1373,10 @@ useEffect(() => {
           [
             'cupons',
             'Cupons',
+          ],
+          [
+            'fidelidade',
+            'Fidelidade',
           ],
           [
             'config',
@@ -3655,6 +3713,82 @@ useEffect(() => {
               >
                 A planilha Excel inclui o resumo financeiro, descontos, despesas, formas de pagamento e resultado operacional.
               </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* FIDELIDADE */}
+
+      {aba === 'fidelidade' && (
+        <div>
+          <h2 className="sec">Fidelidade</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 12.5, margin: '0 0 14px' }}>
+            O cliente acumula pontos nas compras e troca exclusivamente por produtos.
+          </p>
+
+          {carregandoFidelidade ? (
+            <div className="empty">Carregando fidelidade...</div>
+          ) : (
+            <>
+              <div className="alert" style={{ marginBottom: 16 }}>
+                Programa {fidelidade?.ativo ? 'ATIVO' : 'DESATIVADO'} · R$ {Number(fidelidade?.reais_por_ponto || 1).toFixed(2).replace('.', ',')} = 1 ponto.
+                {fidelidade?.ativo ? '' : ' A ativação permanece bloqueada até o QA final.'}
+              </div>
+
+              <label className="f">Produto da recompensa</label>
+              <select
+                className="inp"
+                value={novaRecompensa.produto_id}
+                onChange={(e) => setNovaRecompensa({ ...novaRecompensa, produto_id: e.target.value })}
+              >
+                <option value="">Selecione um produto</option>
+                {produtos.filter((p) => p.ativo !== false).map((p) => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+
+              <label className="f">Pontos necessários</label>
+              <input
+                className="inp"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Ex.: 100"
+                value={novaRecompensa.pontos}
+                onChange={(e) => setNovaRecompensa({ ...novaRecompensa, pontos: e.target.value })}
+              />
+
+              <label className="f">Descrição opcional</label>
+              <input
+                className="inp"
+                maxLength={180}
+                placeholder="Ex.: Troque seus pontos por este doce"
+                value={novaRecompensa.descricao}
+                onChange={(e) => setNovaRecompensa({ ...novaRecompensa, descricao: e.target.value })}
+              />
+
+              <button className="btn" disabled={salvandoRecompensa} onClick={criarRecompensa} style={{ marginTop: 12, marginBottom: 20 }}>
+                {salvandoRecompensa ? 'Salvando...' : '+ Criar recompensa'}
+              </button>
+
+              <h2 className="sec">Recompensas cadastradas</h2>
+              {recompensas.length === 0 ? (
+                <div className="empty">Nenhuma recompensa cadastrada ainda.</div>
+              ) : recompensas.map((r) => (
+                <div className="adm-row" key={r.id}>
+                  <div className="info">
+                    <b>{r.produtos?.nome || r.nome}</b>
+                    <small>{r.pontos} pontos{r.ativo === false ? ' · desativada' : ''}</small>
+                    {r.descricao && <small>{r.descricao}</small>}
+                  </div>
+                  {r.ativo !== false && (
+                    <button className="mini danger" onClick={() => desativarRecompensa(r.id)}>
+                      Desativar
+                    </button>
+                  )}
+                </div>
+              ))}
             </>
           )}
         </div>
