@@ -8,7 +8,8 @@ import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!(await exigirOperacao())) {
+  const usuario = await exigirOperacao();
+  if (!usuario) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
@@ -27,7 +28,8 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
-  if (!(await exigirOperacao())) {
+  const usuario = await exigirOperacao();
+  if (!usuario) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
@@ -90,6 +92,20 @@ export async function PATCH(request) {
         { status: 409 }
       );
     }
+  }
+
+  if (patch.status === 'concluido' && atual.tipo === 'entrega') {
+    return NextResponse.json(
+      { erro: 'pedidos para entrega devem ser concluidos pela area de entregas' },
+      { status: 409 }
+    );
+  }
+
+  if (usuario.papel === 'cozinha' && patch.status === 'cancelado') {
+    return NextResponse.json(
+      { erro: 'a cozinha nao possui permissao para cancelar pedidos' },
+      { status: 403 }
+    );
   }
 
   if (patch.status && patch.status !== atual.status) {
