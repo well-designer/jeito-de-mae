@@ -69,3 +69,30 @@ body{background:var(--jm-bg)!important;color:var(--jm-text)!important;padding-bo
   margin:0!important;
 }
 .checkout-body{padding-bottom:105px!important}
+
+
+/* Checkout V1.5 — rolagem somente no conteúdo; rodapé fora do scroll */
+.checkout-app{
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding-bottom:0!important;
+}
+.checkout-head{flex:0 0 auto!important}
+.checkout-body{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:28px!important;
+}
+.checkout-action{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  width:100%!important;
+  flex:0 0 auto!important;
+  z-index:10!important;
+}
