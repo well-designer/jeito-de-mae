@@ -174,6 +174,12 @@ export async function PATCH(request) {
 
   if (patch.status === 'concluido') {
     patch.concluido_em = agora;
+
+    // Dinheiro e recebido presencialmente na entrega/retirada.
+    // Ao concluir o pedido, o backend confirma o recebimento automaticamente.
+    if (atual.pagamento === 'dinheiro') {
+      patch.status_pagamento = 'pago';
+    }
   }
 
   const { data, error } = await sb
