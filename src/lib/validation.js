@@ -115,6 +115,12 @@ export const pedidoSchema = z.object({
   cartao: cartaoSchema
     .optional(),
 
+  troco_para: z.union([
+    z.string().trim().max(30),
+    z.number().min(0).max(99999),
+    z.null(),
+  ]).optional().default(null),
+
 }).superRefine((d, ctx) => {
   /*
    * Entrega exige endereço.
