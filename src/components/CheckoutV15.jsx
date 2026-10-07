@@ -70,6 +70,12 @@ export default function CheckoutV15({
               </button>
             ))}
           </div>
+          {form.pagamento === 'dinheiro' && (
+            <div className="checkout-change">
+              <label><span>Precisa de troco?</span><input inputMode="decimal" placeholder="Ex.: 50,00 — deixe em branco se não precisar" value={form.trocoPara} onChange={e => setForm({ ...form, trocoPara: e.target.value })}/></label>
+              <small>O entregador levará o troco considerando o valor informado.</small>
+            </div>
+          )}
         </section>
 
         <section className="checkout-section checkout-coupon">
