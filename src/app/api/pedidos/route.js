@@ -49,35 +49,24 @@ function diaAtualSaoPaulo() {
  * O fuso e definido explicitamente porque o servidor da Vercel
  * pode estar executando em UTC.
  */
-function dentroDoHorarioDeFuncionamento() {
-  const agora = new Date();
-
+function dentroDoHorarioDeFuncionamento(horarios) {
   const partes = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(agora);
-
-  const valor = (tipo) =>
-    partes.find((parte) => parte.type === tipo)?.value;
-
-  const dia = valor('weekday');
-  const hora = Number(valor('hour'));
-  const minuto = Number(valor('minute'));
-
-  // Domingo fechado.
-  if (dia === 'Sunday') {
-    return false;
-  }
-
-  // Segunda a sabado: 11:00 ate 16:00.
-  const minutosAgora = hora * 60 + minuto;
-  const abertura = 11 * 60;
-  const fechamento = 16 * 60;
-
-  return minutosAgora >= abertura && minutosAgora < fechamento;
+  }).formatToParts(new Date());
+  const valor = (tipo) => partes.find((p) => p.type === tipo)?.value;
+  const mapa = {Monday:'segunda',Tuesday:'terca',Wednesday:'quarta',Thursday:'quinta',Friday:'sexta',Saturday:'sabado',Sunday:'domingo'};
+  const regra = horarios?.[mapa[valor('weekday')]];
+  if (!regra?.ativo) return false;
+  const paraMinutos = (v) => { const [h,m] = String(v||'').split(':').map(Number); return h*60+m; };
+  const agora = Number(valor('hour')) * 60 + Number(valor('minute'));
+  const abre = paraMinutos(regra.abre);
+  const fecha = paraMinutos(regra.fecha);
+  if (![agora,abre,fecha].every(Number.isFinite) || abre === fecha) return false;
+  return fecha > abre ? agora >= abre && agora < fecha : agora >= abre || agora < fecha;
 }
 
 export async function POST(request) {
@@ -192,7 +181,7 @@ if (
     .eq('id', 1)
     .single();
 
-  const dentroDoHorario = dentroDoHorarioDeFuncionamento();
+  const dentroDoHorario = dentroDoHorarioDeFuncionamento(config?.horarios_semana);
 
   if (!config?.aberto || !dentroDoHorario) {
     return NextResponse.json(
