@@ -31,7 +31,8 @@ export function SuccessV15({ pedido, pago }) {
         <span className="payment-kicker">PEDIDO #{pedido?.codigo || ''}</span>
         <h2>Pedido recebido!</h2>
         <p>{pago ? 'Pagamento confirmado. Agora vamos preparar tudo com carinho.' : 'Recebemos seu pedido. Você pode acompanhar cada etapa por aqui.'}</p>
-        <div className="success-progress"><div className="active"><i>✓</i><span><b>Pedido recebido</b><small>Seu pedido entrou no sistema</small></span></div><div><i>2</i><span><b>Em preparo</b><small>A cozinha iniciará o preparo</small></span></div><div><i>3</i><span><b>{pedido?.tipo === 'retirada' ? 'Pronto para retirada' : 'Saiu para entrega'}</b><small>Acompanhe o andamento</small></span></div></div>
+        {pedido?.codigo_entrega && <div style={{margin:'16px 0',padding:'14px',borderRadius:12,background:'#f7f3f0',textAlign:'center'}}><small style={{display:'block',marginBottom:5}}>Código para confirmar a entrega</small><strong style={{fontSize:28,letterSpacing:5}}>{pedido.codigo_entrega}</strong><small style={{display:'block',marginTop:6}}>Informe este código ao entregador somente quando receber seu pedido.</small></div>}
+                <div className="success-progress"><div className="active"><i>✓</i><span><b>Pedido recebido</b><small>Seu pedido entrou no sistema</small></span></div><div><i>2</i><span><b>Em preparo</b><small>A cozinha iniciará o preparo</small></span></div><div><i>3</i><span><b>{pedido?.tipo === 'retirada' ? 'Pronto para retirada' : 'Saiu para entrega'}</b><small>Acompanhe o andamento</small></span></div></div>
         <a className="success-track" href={`/pedido/${pedido?.id}`}>Acompanhar meu pedido <b>→</b></a>
         <a className="success-home" href="/">Voltar ao cardápio</a>
       </div>
