@@ -28,8 +28,14 @@ export default function Login() {
       setErro('E-mail ou senha incorretos.');
       return;
     }
-    router.replace('/admin');
-    router.refresh();
+    try {
+      const destinoRes = await fetch('/api/auth/destino', { cache: 'no-store' });
+      const destinoData = await destinoRes.json();
+      router.replace(destinoRes.ok ? destinoData.destino : '/login');
+      router.refresh();
+    } catch {
+      router.replace('/login');
+    }
   }
 
   return (
