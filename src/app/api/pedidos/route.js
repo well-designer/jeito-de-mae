@@ -769,11 +769,14 @@ const {
       dados.troco_para !== null &&
       dados.troco_para !== undefined &&
       String(dados.troco_para).trim() !== ''
-        ? Number(
-            String(dados.troco_para)
-              .replace(/\./g, '')
-              .replace(',', '.')
-          )
+        ? (() => {
+            const bruto = String(dados.troco_para).trim().replace(/\s/g, '').replace(/^R\$/i, '');
+            const normalizado = bruto.includes(',')
+              ? bruto.replace(/\./g, '').replace(',', '.')
+              : bruto;
+            const valor = Number(normalizado);
+            return Number.isFinite(valor) && valor >= total ? Number(valor.toFixed(2)) : null;
+          })()
         : null,
 
     status_pagamento: 'pendente',
