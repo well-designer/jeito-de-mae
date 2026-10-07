@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHash, randomBytes, randomInt } from 'crypto';
+import { createCipheriv, createHash, randomBytes, randomInt } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
@@ -706,6 +706,14 @@ let pedidoFoiCriadoAgora = false;
 let codigoEntrega = null;
 const acompanhamentoToken = randomBytes(24).toString('hex');
 const acompanhamentoTokenHash = createHash('sha256').update(acompanhamentoToken).digest('hex');
+const chaveEntrega = createHash('sha256').update(acompanhamentoToken).digest();
+const cifrarCodigoEntrega = (codigo) => {
+  if (!codigo) return null;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', chaveEntrega, iv);
+  const enc = Buffer.concat([cipher.update(codigo, 'utf8'), cipher.final()]);
+  return [iv.toString('hex'), cipher.getAuthTag().toString('hex'), enc.toString('hex')].join('.');
+};
 const exigeCodigoEntrega = dados.tipo === 'entrega' && config?.confirmacao_entrega === 'todas';
 if (exigeCodigoEntrega) codigoEntrega = String(randomInt(0, 1000000)).padStart(6, '0');
 
@@ -779,6 +787,7 @@ const {
     entrega_codigo_necessario: exigeCodigoEntrega,
     entrega_codigo_hash: codigoEntrega ? createHash('sha256').update(codigoEntrega).digest('hex') : null,
     acompanhamento_token_hash: acompanhamentoTokenHash,
+    entrega_codigo_cliente_cifrado: cifrarCodigoEntrega(codigoEntrega),
 
     status: 'novo',
   })
