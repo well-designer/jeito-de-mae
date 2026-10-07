@@ -10,7 +10,7 @@ const CART_KEY='jm_sacola_v15';
 function brl(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function IconePrato(){return <span className="food-placeholder-mark">JM</span>}
 
-export default function Loja({config,produtos}){
+export default function Loja({config,produtos,banners=[]}){
  const[catAtiva,setCatAtiva]=useState('Todos'),[busca,setBusca]=useState(''),[produtoSel,setProdutoSel]=useState(null),[opcaoSel,setOpcaoSel]=useState(0),[qtd,setQtd]=useState(1),[obs,setObs]=useState(''),[adicionaisSel,setAdicionaisSel]=useState([]),[talherSel,setTalherSel]=useState(null),[carrinho,setCarrinho]=useState([]),[cartReady,setCartReady]=useState(false),[modal,setModal]=useState(null),[toast,setToast]=useState(''),[enviando,setEnviando]=useState(false),[erro,setErro]=useState(''),[pedidoFeito,setPedidoFeito]=useState(null),[pix,setPix]=useState(null),[pago,setPago]=useState(false),[cupomDigitado,setCupomDigitado]=useState(''),[cupomAplicado,setCupomAplicado]=useState(null),[erroCupom,setErroCupom]=useState(''),[validandoCupom,setValidandoCupom]=useState(false);const checkoutIdRef=useRef(null);
  const[form,setForm]=useState({nome:'',telefone:'',cep:'',endereco:'',numero:'',complemento:'',bairro:'',tipo:'entrega',pagamento:'pix',trocoPara:''});
  useEffect(()=>{if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});try{const d=JSON.parse(localStorage.getItem('jm_cliente')||'null');if(d)setForm(f=>({...f,...d}));const c=JSON.parse(localStorage.getItem(CART_KEY)||'[]');if(Array.isArray(c))setCarrinho(c)}catch{}finally{setCartReady(true)}},[]);
@@ -36,10 +36,10 @@ export default function Loja({config,produtos}){
    </div>
  </header>
  <section className="smart-home">
-   <div className="smart-banner">
+   {banners.length>0?<div className="smart-banner-stack">{banners.map(b=><div className="smart-banner" key={b.id} style={b.imagem_url?{backgroundImage:`linear-gradient(90deg,rgba(94,18,28,.94),rgba(94,18,28,.48)),url("${b.imagem_url}")`,backgroundSize:'cover',backgroundPosition:'center'}:undefined}><div className="smart-banner-copy"><span className="smart-kicker">{b.kicker||'DESTAQUE'}</span><h2>{b.titulo}</h2>{b.texto&&<p>{b.texto}</p>}<Link href={b.link||'/'}>{b.cta||'Ver mais'} <b>→</b></Link></div>{!b.imagem_url&&<div className="smart-banner-art" aria-hidden="true"><span>JM</span></div>}</div>)}</div>:<div className="smart-banner">
      <div className="smart-banner-copy"><span className="smart-kicker">DESTAQUE DE HOJE</span><h2>Comida com aquele sabor de casa.</h2><p>Escolha seu prato favorito e peça sem sair daqui.</p><button type="button" onClick={()=>document.querySelector('.store-search')?.scrollIntoView({behavior:'smooth'})}>Ver cardápio <b>→</b></button></div>
      <div className="smart-banner-art" aria-hidden="true"><span>JM</span></div>
-   </div>
+   </div>}
    <div className="home-benefits">
      <article><span className="benefit-icon">✦</span><div><b>Fidelidade</b><small>Em breve, seus pedidos vão valer pontos.</small></div><span className="benefit-soon">Em breve</span></article>
      <article><span className="benefit-icon">♡</span><div><b>Feito com carinho</b><small>Pratos preparados com sabor de comida caseira.</small></div></article>
