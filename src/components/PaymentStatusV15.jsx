@@ -3,7 +3,7 @@
 export function PixV15({ pix, total }) {
   async function copiar() {
     try {
-      await navigator.clipboard.writeText(pix?.qr_code || '');
+      await navigator.clipboard.writeText(pix?.qrCode || '');
     } catch {}
   }
 
@@ -15,8 +15,8 @@ export function PixV15({ pix, total }) {
         <h2>Quase lá!</h2>
         <p>Escaneie o QR Code ou copie o código Pix para concluir seu pagamento.</p>
         {total && <div className="payment-total"><small>Total do pedido</small><strong>{total}</strong></div>}
-        {pix?.qr_code_base64 && <div className="pix-qr"><img src={`data:image/png;base64,${pix.qr_code_base64}`} alt="QR Code Pix"/></div>}
-        <div className="pix-code"><textarea readOnly value={pix?.qr_code || ''}/><button type="button" onClick={copiar}>Copiar código Pix</button></div>
+        {pix?.qrCodeBase64 && <div className="pix-qr"><img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Code Pix"/></div>}
+        <div className="pix-code"><textarea readOnly value={pix?.qrCode || ''}/><button type="button" onClick={copiar}>Copiar código Pix</button></div>
         <div className="payment-wait"><span></span><div><b>Aguardando pagamento</b><small>Assim que o Pix for confirmado, atualizaremos esta tela automaticamente.</small></div></div>
       </div>
     </div>
