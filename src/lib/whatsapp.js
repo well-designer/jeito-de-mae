@@ -74,3 +74,14 @@ export async function avisarPedidoNovo(pedido) {
     return { enviado: false, motivo: 'excecao' };
   }
 }
+
+export async function enviarCodigoFidelidade(telefone,codigo){
+ const token=process.env.WHATSAPP_TOKEN;const phoneId=process.env.WHATSAPP_PHONE_NUMBER_ID;const template=process.env.WHATSAPP_FIDELIDADE_TEMPLATE||'codigo_fidelidade';
+ if(!token||!phoneId)return {enviado:false,motivo:'nao_configurado'};
+ const destino=String(telefone||'').replace(/\D/g,'');const to=destino.startsWith('55')?destino:'55'+destino;
+ try{
+  const res=await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to,type:'template',template:{name:template,language:{code:'pt_BR'},components:[{type:'body',parameters:[{type:'text',text:String(codigo)}]}]}})});
+  if(!res.ok){console.error('[whatsapp] codigo fidelidade:',await res.text());return {enviado:false,motivo:'erro_api'}}
+  return {enviado:true};
+ }catch(e){console.error('[whatsapp] codigo fidelidade:',e);return {enviado:false,motivo:'excecao'}}
+}
