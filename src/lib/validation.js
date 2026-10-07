@@ -437,6 +437,8 @@ export const statusPedidoSchema = z.object({
     'pago',
     'expirado',
   ]).optional(),
+
+  entrega_codigo_necessario: z.boolean().optional(),
 });
 
 export { soDigitos };
