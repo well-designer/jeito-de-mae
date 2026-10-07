@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const modelos={
   prato:{kicker:'DESTAQUE DE HOJE',titulo:'Comida com aquele sabor de casa.',texto:'Escolha seu prato favorito e peça sem sair daqui.',cta:'Ver cardápio'},
@@ -8,13 +9,14 @@ const modelos={
 };
 
 export default function MarketingBannerBuilder(){
+ const router=useRouter();
  const [aberto,setAberto]=useState(false); const [tipo,setTipo]=useState('prato'); const [salvando,setSalvando]=useState(false); const [aviso,setAviso]=useState(''); const [brief,setBrief]=useState('');
  const [form,setForm]=useState({...modelos.prato,link:'/',inicio:'',fim:'',prioridade:'1',imagem:''});
  const atualizar=(k,v)=>setForm(x=>({...x,[k]:v}));
  const aplicarModelo=(v)=>{setTipo(v);setForm(x=>({...x,...modelos[v]}));};
  const sugerir=()=>{const q=brief.toLowerCase();let chave=tipo;if(q.includes('feijoada'))chave='feijoada';else if(q.includes('fidel')||q.includes('ponto'))chave='fidelidade';else chave='prato';setTipo(chave);setForm(x=>({...x,...modelos[chave]}));setAviso('Sugestão preparada para revisão. A geração por IA será ativada quando o provedor estiver conectado.')};
  const preview=useMemo(()=>form,[form]);
- const salvar=async()=>{setSalvando(true);setAviso('');try{const r=await fetch('/api/admin/banners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)throw new Error(j.erro||'Não foi possível salvar');setAviso('Rascunho salvo.');}catch(e){setAviso(e.message)}finally{setSalvando(false)}};
+ const salvar=async()=>{setSalvando(true);setAviso('');try{const r=await fetch('/api/admin/banners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)throw new Error(j.erro||'Não foi possível salvar');setAviso('Rascunho salvo.');router.refresh();}catch(e){setAviso(e.message)}finally{setSalvando(false)}};
  if(!aberto) return <button className="marketing-builder-open" type="button" onClick={()=>setAberto(true)}>+ Criar novo banner</button>;
  return <section className="banner-builder">
    <div className="banner-builder-head"><div><span>EDITOR DE BANNER</span><h2>Nova campanha</h2><p>Monte a campanha e confira a prévia antes de publicar.</p></div><button type="button" onClick={()=>setAberto(false)}>Fechar</button></div>
