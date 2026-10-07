@@ -1,9 +1,16 @@
 'use client';
 import { useState } from 'react';
-export default function LoyaltyRedeem({telefone,recompensa,onDone}){
- const [etapa,setEtapa]=useState('inicio'),[codigo,setCodigo]=useState(''),[token,setToken]=useState(''),[msg,setMsg]=useState(''),[busy,setBusy]=useState(false);
- async function pedir(){setBusy(true);setMsg('');try{const r=await fetch('/api/fidelidade/verificar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone})});const d=await r.json();if(!r.ok)throw new Error(d.erro);setEtapa('codigo')}catch(e){setMsg(e.message)}finally{setBusy(false)}}
- async function confirmar(){setBusy(true);setMsg('');try{const r=await fetch('/api/fidelidade/verificar',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone,codigo})});const d=await r.json();if(!r.ok)throw new Error(d.erro);setToken(d.verificacao);setEtapa('confirmado')}catch(e){setMsg(e.message)}finally{setBusy(false)}}
- async function resgatar(){setBusy(true);setMsg('');try{const r=await fetch('/api/fidelidade/resgatar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({telefone,recompensaId:recompensa.id,verificacao:token})});const d=await r.json();if(!r.ok)throw new Error(d.erro);setEtapa('feito');setMsg('Resgate realizado. Código: '+d.resgate.codigo);onDone?.()}catch(e){setMsg(e.message)}finally{setBusy(false)}}
- return <div className="loyalty-redeem">{etapa==='inicio'&&<button onClick={pedir} disabled={busy}>{busy?'Enviando...':'Resgatar'}</button>}{etapa==='codigo'&&<div><small>Enviamos um código para seu WhatsApp.</small><input value={codigo} onChange={e=>setCodigo(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" inputMode="numeric"/><button onClick={confirmar} disabled={busy||codigo.length!==6}>Confirmar código</button></div>}{etapa==='confirmado'&&<button onClick={resgatar} disabled={busy}>{busy?'Resgatando...':'Confirmar resgate'}</button>}{msg&&<small className={etapa==='feito'?'ok':'err'}>{msg}</small>}</div>;
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+export default function LoyaltyRedeem({recompensa,onDone}){
+ const [busy,setBusy]=useState(false),[msg,setMsg]=useState('');
+ async function resgatar(){
+  setBusy(true);setMsg('');
+  try{
+   const {data}=await supabaseBrowser().auth.getSession();if(!data.session)throw new Error('Valide seu e-mail para resgatar.');
+   const r=await fetch('/api/fidelidade/resgatar',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({recompensaId:recompensa.id})});
+   const d=await r.json();if(!r.ok)throw new Error(d.erro||'Não foi possível resgatar.');
+   setMsg('Resgate realizado. Código: '+d.resgate.codigo);onDone?.();
+  }catch(e){setMsg(e.message)}finally{setBusy(false)}
+ }
+ return <div className="loyalty-redeem"><button onClick={resgatar} disabled={busy}>{busy?'Resgatando...':'Resgatar'}</button>{msg&&<small className={msg.startsWith('Resgate realizado')?'ok':'err'}>{msg}</small>}</div>;
 }
