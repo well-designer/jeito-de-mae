@@ -368,7 +368,6 @@ export default function Cozinha({
               pedido.status_pagamento !== 'pago';
 
             let proximo = pagamentoPendente ? null : proximoStatus(pedido);
-            if (modo === 'cozinha' && pedido.status === 'entrega') proximo = null;
 
             return (
               <article
