@@ -52,7 +52,7 @@ export async function POST(request) {
   const [{ data: recompensa }, { data: cliente }] = await Promise.all([
     sb
       .from('fidelidade_recompensas')
-      .select('nome,descricao,pontos')
+      .select('nome,descricao,pontos,produto_id,produtos(id,nome,foto_url,ativo)')
       .eq('id', resgate.recompensa_id)
       .maybeSingle(),
     sb
