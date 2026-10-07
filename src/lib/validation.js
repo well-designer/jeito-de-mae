@@ -369,6 +369,8 @@ export const configSchema = z.object({
 
   horarios_semana: horariosSemanaSchema.optional(),
 
+  confirmacao_entrega: z.enum(['desativado','todas','sob_demanda']).optional().default('desativado'),
+
   prato_do_dia: z.string()
     .max(120)
     .optional()
