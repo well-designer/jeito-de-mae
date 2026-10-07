@@ -10,7 +10,7 @@ export default async function Home() {
   const sb = supabaseAdmin();
   const [{ data: config }, { data: produtos }, { data: banners }] = await Promise.all([
     sb.from('config').select('*').eq('id', 1).single(),
-    sb.from('produtos').select(`id,nome,descricao,categoria,preco,opcoes,foto_url,destaque,ordem,dias_semana,adicionais,perguntar_talher,ativo`).eq('ativo', true).order('ordem'),
+    sb.from('produtos').select(`id,nome,descricao,categoria,opcoes,foto_url,destaque,ordem,dias_semana,adicionais,perguntar_talher,ativo`).eq('ativo', true).order('ordem'),
     sb.from('banners').select('*').eq('ativo',true).order('prioridade',{ascending:false}).order('criado_em',{ascending:false}),
   ]);
 
