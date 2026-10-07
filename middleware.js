@@ -62,5 +62,7 @@ export const config = {
     '/admin/:path*',
     '/api/admin/:path*',
     '/cozinha/:path*',
+    '/entregas/:path*',
+    '/api/entregas/:path*',
   ],
 };
