@@ -27,7 +27,14 @@ export function supabaseSSR() {
  * esta na tabela perfis. So ter conta no Supabase nao basta.
  * Retorna o usuario ou null.
  */
-export async function exigirAdmin() {
+const PAPEIS = {
+  proprietario: ['admin', 'proprietario'],
+  atendente: ['admin', 'proprietario', 'atendente'],
+  cozinha: ['admin', 'proprietario', 'cozinha'],
+  entregador: ['admin', 'proprietario', 'entregador'],
+};
+
+export async function exigirPapel(papeisPermitidos = []) {
   const supabase = supabaseSSR();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -38,6 +45,23 @@ export async function exigirAdmin() {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!perfil || perfil.papel !== 'admin') return null;
-  return user;
+  if (!perfil || !papeisPermitidos.includes(perfil.papel)) return null;
+  return { ...user, papel: perfil.papel };
+}
+
+/** Compatibilidade: rotas administrativas continuam aceitando o antigo papel admin. */
+export async function exigirAdmin() {
+  return exigirPapel(PAPEIS.proprietario);
+}
+
+export async function exigirAtendimento() {
+  return exigirPapel(PAPEIS.atendente);
+}
+
+export async function exigirCozinha() {
+  return exigirPapel(PAPEIS.cozinha);
+}
+
+export async function exigirEntregador() {
+  return exigirPapel(PAPEIS.entregador);
 }
