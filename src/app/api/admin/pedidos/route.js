@@ -51,7 +51,7 @@ export async function PATCH(request) {
 
   const { data: atual, error: erroAtual } = await sb
     .from('pedidos')
-    .select('id,status,status_pagamento,tipo,pagamento')
+    .select('id,status,status_pagamento,tipo,pagamento,acompanhamento_token_hash,entrega_codigo_necessario')
     .eq('id', id)
     .maybeSingle();
 
@@ -122,6 +122,18 @@ export async function PATCH(request) {
         { status: 409 }
       );
     }
+  }
+
+  if (patch.entrega_codigo_necessario === true && !atual.entrega_codigo_necessario) {
+    if (atual.tipo !== 'entrega' || ['concluido','cancelado'].includes(atual.status)) {
+      return NextResponse.json({ erro: 'nao e possivel exigir codigo neste pedido' }, { status: 409 });
+    }
+    // Pedidos antigos, sem token privado criado no checkout, não podem receber
+    // confirmação sob demanda sem expor um segredo ao entregador/admin.
+    if (!atual.acompanhamento_token_hash) {
+      return NextResponse.json({ erro: 'este pedido foi criado antes do acompanhamento seguro e nao aceita codigo sob demanda' }, { status: 409 });
+    }
+    return NextResponse.json({ erro: 'ative o codigo pelo acompanhamento privado do cliente' }, { status: 409 });
   }
 
   /*
