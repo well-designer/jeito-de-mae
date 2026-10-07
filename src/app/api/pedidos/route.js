@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createCipheriv, createHash, randomBytes, randomInt } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
@@ -70,6 +71,15 @@ function dentroDoHorarioDeFuncionamento(horarios) {
   return fecha > abre ? agora >= abre && agora < fecha : agora >= abre || agora < fecha;
 }
 
+async function usuarioAutenticado(request) {
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token) return null;
+  const verifier = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: { user } } = await verifier.auth.getUser(token);
+  return user || null;
+}
+
 export async function POST(request) {
   if (!limitar(`pedido:${ipDe(request)}`, 8, 60_000)) {
     return NextResponse.json(
@@ -114,6 +124,7 @@ if (!parsed.success) {
   
   const dados = parsed.data;
   const sb = supabaseAdmin();
+  const authUser = await usuarioAutenticado(request);
 
   // -------------------------------------------------------------------
 // IDEMPOTENCIA DO CHECKOUT
@@ -724,6 +735,8 @@ const {
   .from('pedidos')
   .insert({
     checkout_id: dados.checkout_id,
+
+    auth_user_id: authUser?.id || null,
 
     codigo: gerarCodigo(),
 
