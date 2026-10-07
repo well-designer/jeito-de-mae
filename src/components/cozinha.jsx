@@ -339,8 +339,14 @@ export default function Cozinha({
       ) : (
         <section className="cozinha-grid">
           {pedidos.map((pedido) => {
+            const pagamentoPendente =
+              pedido.pagamento !== 'dinheiro' &&
+              pedido.status_pagamento !== 'pago';
+
             const proximo =
-              proximoStatus(pedido);
+              pagamentoPendente
+                ? null
+                : proximoStatus(pedido);
 
             return (
               <article
@@ -376,6 +382,12 @@ export default function Cozinha({
                     pedido.status
                   ] || pedido.status}
                 </div>
+
+                {pagamentoPendente && (
+                  <div className="pedido-pagamento-pendente">
+                    Aguardando confirmação do pagamento
+                  </div>
+                )}
 
                 <div className="pedido-tipo">
                   {pedido.tipo ===
@@ -642,6 +654,16 @@ export default function Cozinha({
           margin: 0 18px 9px;
           font-weight: 800;
           color: #7b263d;
+        }
+
+        .pedido-pagamento-pendente {
+          margin: 0 18px 12px;
+          padding: 9px 11px;
+          border-radius: 9px;
+          background: #fff4dd;
+          color: #7a5417;
+          font-size: 12px;
+          font-weight: 800;
         }
 
         .pedido-tipo {
