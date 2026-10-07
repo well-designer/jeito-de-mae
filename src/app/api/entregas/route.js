@@ -16,7 +16,7 @@ export async function PATCH(request){
  const user=await exigirEntregador(); if(!user)return NextResponse.json({erro:'nao autorizado'},{status:401});
  const body=await request.json().catch(()=>({})); const id=String(body.id||''),acao=String(body.acao||'');
  if(!/^[0-9a-f-]{36}$/i.test(id)||!['assumir','cheguei','entregue'].includes(acao))return NextResponse.json({erro:'dados invalidos'},{status:400});
- const sb=supabaseAdmin(); const {data:p}=await sb.from('pedidos').select('id,status,tipo,entregador_id,pagamento,status_pagamento,entrega_codigo_necessario,entrega_codigo_hash').eq('id',id).maybeSingle();
+ const sb=supabaseAdmin(); const {data:p}=await sb.from('pedidos').select('id,status,tipo,entregador_id,pagamento,status_pagamento,chegou_entrega_em,entrega_codigo_necessario,entrega_codigo_hash').eq('id',id).maybeSingle();
  if(!p||p.tipo!=='entrega'||p.status!=='entrega')return NextResponse.json({erro:'entrega indisponivel'},{status:409});
  if(p.entregador_id&&p.entregador_id!==user.id)return NextResponse.json({erro:'entrega atribuida a outro entregador'},{status:409});
  let patch={};
@@ -24,6 +24,7 @@ export async function PATCH(request){
  if(acao==='cheguei'){if(!p.entregador_id)return NextResponse.json({erro:'assuma a entrega primeiro'},{status:409});patch={chegou_entrega_em:new Date().toISOString()};}
  if(acao==='entregue'){
    if(!p.entregador_id)return NextResponse.json({erro:'assuma a entrega primeiro'},{status:409});
+   if(!p.chegou_entrega_em)return NextResponse.json({erro:'marque Cheguei antes de confirmar a entrega'},{status:409});
    if(p.entrega_codigo_necessario){
      const codigo=String(body.codigo||'').trim();
      if(!/^\d{6}$/.test(codigo)||!p.entrega_codigo_hash)return NextResponse.json({erro:'informe o codigo de 6 digitos do cliente'},{status:400});
