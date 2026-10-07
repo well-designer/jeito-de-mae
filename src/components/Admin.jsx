@@ -115,34 +115,17 @@ useEffect(() => {
 
 const dentroDoHorario = (() => {
   const partes = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Sao_Paulo',
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
+    timeZone: 'America/Sao_Paulo', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(agora);
-
-  const valor = (tipo) =>
-    partes.find((parte) => parte.type === tipo)?.value;
-
-  const dia = valor('weekday');
-  const hora = Number(valor('hour'));
-  const minuto = Number(valor('minute'));
-
-  // Domingo fechado
-  if (dia === 'Sunday') {
-    return false;
-  }
-
-  // Segunda a sabado: 11:00 ate 16:00
-  const minutosAgora = hora * 60 + minuto;
-  const abertura = 11 * 60;
-  const fechamento = 16 * 60;
-
-  return (
-    minutosAgora >= abertura &&
-    minutosAgora < fechamento
-  );
+  const valor = (tipo) => partes.find((parte) => parte.type === tipo)?.value;
+  const mapa = {Monday:'segunda',Tuesday:'terca',Wednesday:'quarta',Thursday:'quinta',Friday:'sexta',Saturday:'sabado',Sunday:'domingo'};
+  const regra = config.horarios_semana?.[mapa[valor('weekday')]];
+  if (!regra?.ativo) return false;
+  const minutos = (v) => { const [h,m] = String(v || '').split(':').map(Number); return h * 60 + m; };
+  const atual = Number(valor('hour')) * 60 + Number(valor('minute'));
+  const abre = minutos(regra.abre), fecha = minutos(regra.fecha);
+  if (![atual, abre, fecha].every(Number.isFinite) || abre === fecha) return false;
+  return fecha > abre ? atual >= abre && atual < fecha : atual >= abre || atual < fecha;
 })();
 
 const lojaAbertaAgora =
@@ -547,6 +530,7 @@ useEffect(() => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         aberto: !!novo.aberto,
+        horarios_semana: novo.horarios_semana,
         prato_do_dia: novo.prato_do_dia || '',
         recado: novo.recado || '',
         mensagem_fechado: novo.mensagem_fechado || '',
@@ -1233,7 +1217,7 @@ useEffect(() => {
         ? 'Os clientes conseguem fazer pedidos agora.'
         : !config.aberto
           ? 'Fechamento manual ativado. Ninguém consegue finalizar pedidos.'
-          : 'Fora do horário de funcionamento: segunda a sábado, das 11h às 16h.'}
+          : 'Fora do horário configurado para hoje.'}
     </small>
   </div>
 </div>
@@ -3944,6 +3928,27 @@ useEffect(() => {
                 }
               />
             </div>
+          </div>
+
+          <label className="f" style={{ marginTop: 22 }}>Horários de funcionamento</label>
+          <p style={{ color:'var(--muted)', fontSize:12.5, margin:'-4px 0 10px' }}>
+            Ative os dias em que a loja abre e informe o horário de cada dia.
+          </p>
+          <div style={{ display:'grid', gap:8, marginBottom:18 }}>
+            {[
+              ['segunda','Segunda'],['terca','Terça'],['quarta','Quarta'],['quinta','Quinta'],
+              ['sexta','Sexta'],['sabado','Sábado'],['domingo','Domingo']
+            ].map(([id,nome]) => {
+              const regra=config.horarios_semana?.[id] || {ativo:false,abre:'11:00',fecha:'16:00'};
+              const alterar=(patch)=>setConfig({...config,horarios_semana:{...(config.horarios_semana||{}),[id]:{...regra,...patch}}});
+              return <div key={id} style={{display:'grid',gridTemplateColumns:'110px 72px 1fr 18px 1fr',alignItems:'center',gap:8,padding:'10px 12px',border:'1px solid var(--line)',borderRadius:12}}>
+                <b style={{fontSize:13}}>{nome}</b>
+                <label style={{fontSize:12}}><input type="checkbox" checked={!!regra.ativo} onChange={e=>alterar({ativo:e.target.checked})}/> Abre</label>
+                <input className="inp" type="time" value={regra.abre} disabled={!regra.ativo} onChange={e=>alterar({abre:e.target.value})}/>
+                <span style={{textAlign:'center'}}>–</span>
+                <input className="inp" type="time" value={regra.fecha} disabled={!regra.ativo} onChange={e=>alterar({fecha:e.target.value})}/>
+              </div>;
+            })}
           </div>
 
           <label className="f">
