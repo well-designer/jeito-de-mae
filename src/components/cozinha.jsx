@@ -140,6 +140,7 @@ function brl(valor) {
 
 export default function Cozinha({
   pedidosIniciais = [],
+  modo = 'cozinha',
 }) {
   const [pedidos, setPedidos] =
     useState(pedidosIniciais);
@@ -366,10 +367,8 @@ export default function Cozinha({
               pedido.pagamento !== 'dinheiro' &&
               pedido.status_pagamento !== 'pago';
 
-            const proximo =
-              pagamentoPendente
-                ? null
-                : proximoStatus(pedido);
+            let proximo = pagamentoPendente ? null : proximoStatus(pedido);
+            if (modo === 'cozinha' && pedido.status === 'entrega') proximo = null;
 
             return (
               <article
