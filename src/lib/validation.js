@@ -348,8 +348,26 @@ export const cupomSchema = z.object({
   }
 });
 
+const horarioDiaSchema = z.object({
+  ativo: z.boolean(),
+  abre: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  fecha: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+});
+
+const horariosSemanaSchema = z.object({
+  segunda: horarioDiaSchema,
+  terca: horarioDiaSchema,
+  quarta: horarioDiaSchema,
+  quinta: horarioDiaSchema,
+  sexta: horarioDiaSchema,
+  sabado: horarioDiaSchema,
+  domingo: horarioDiaSchema,
+});
+
 export const configSchema = z.object({
   aberto: z.boolean(),
+
+  horarios_semana: horariosSemanaSchema.optional(),
 
   prato_do_dia: z.string()
     .max(120)
