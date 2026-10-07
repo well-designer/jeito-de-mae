@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createHash, randomInt } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
@@ -704,6 +704,8 @@ if (
 let pedido = null;
 let pedidoFoiCriadoAgora = false;
 let codigoEntrega = null;
+const acompanhamentoToken = randomBytes(24).toString('hex');
+const acompanhamentoTokenHash = createHash('sha256').update(acompanhamentoToken).digest('hex');
 const exigeCodigoEntrega = dados.tipo === 'entrega' && config?.confirmacao_entrega === 'todas';
 if (exigeCodigoEntrega) codigoEntrega = String(randomInt(0, 1000000)).padStart(6, '0');
 
@@ -776,6 +778,7 @@ const {
 
     entrega_codigo_necessario: exigeCodigoEntrega,
     entrega_codigo_hash: codigoEntrega ? createHash('sha256').update(codigoEntrega).digest('hex') : null,
+    acompanhamento_token_hash: acompanhamentoTokenHash,
 
     status: 'novo',
   })
@@ -1176,6 +1179,7 @@ if (!erroInsert) {
         pedido.tipo,
 
       codigo_entrega: codigoEntrega,
+      acompanhamento_token: acompanhamentoToken,
     },
 
     pix,
