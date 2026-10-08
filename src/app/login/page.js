@@ -31,10 +31,13 @@ export default function Login() {
     try {
       const destinoRes = await fetch('/api/auth/destino', { cache: 'no-store' });
       const destinoData = await destinoRes.json();
-      router.replace(destinoRes.ok ? destinoData.destino : '/login');
-      router.refresh();
+      if (!destinoRes.ok || !destinoData.destino || destinoData.destino === '/login') {
+        setErro(destinoData.erro || 'Sua senha foi aceita, mas o servidor não conseguiu confirmar a permissão de acesso. Atualize a página e tente novamente.');
+        return;
+      }
+      window.location.assign(destinoData.destino);
     } catch {
-      router.replace('/login');
+      setErro('Login realizado, mas houve uma falha ao verificar o acesso ao painel. Tente novamente.');
     }
   }
 
