@@ -228,3 +228,10 @@ body{background:var(--jm-bg)!important;color:var(--jm-text)!important;padding-bo
 .jm-live-promo-bottom button{width:100%;background:#ac3a17;border:0;border-radius:14px;padding:15px 18px;color:#fff;font-size:15px;font-weight:850;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer}
 .jm-live-promo-bottom button span{font-size:20px}
 @media(max-height:640px){.jm-live-promo-copy{padding-top:19px;padding-bottom:14px}.jm-live-promo-photo{height:155px}}
+
+
+/* Tela de codigo: mascote ilustrada do prototipo */
+.delivery-code-page{background:#fffaf6}.delivery-code-head{background:#fffaf6}.delivery-code-illustration{background:#fdebe2!important;border-radius:0 0 42px 42px;height:240px!important;place-items:center!important}.delivery-code-illustration svg{max-height:235px}
+.delivery-code-content{padding-top:26px!important}.delivery-code-content h2{font-size:23px!important;letter-spacing:-.5px;margin-bottom:6px!important}.delivery-code-intro{text-align:center;color:#8f786b;font-size:12px;margin:0 0 22px}
+.delivery-code-card{background:#fbf1e4!important;border:1px solid #f3e2d3;padding:24px 16px!important}.delivery-code-card strong{color:#bda99a;letter-spacing:5px!important;font-size:40px!important}.delivery-code-card button:disabled{opacity:.5;cursor:not-allowed}
+.delivery-code-off{border-radius:14px!important;background:#fff7f0!important}
