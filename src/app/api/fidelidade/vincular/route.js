@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -39,7 +40,22 @@ export async function POST(request) {
     );
   }
 
+  const comprovante = String(body.verificacao || '');
+  const [verificacaoId,assinatura] = comprovante.split('.');
   const sb = supabaseAdmin();
+  let telefoneConfirmado = false;
+  if (/^[0-9a-f-]{36}$/i.test(verificacaoId || '') && /^[0-9a-f]{64}$/i.test(assinatura || '')) {
+    const esperado = createHmac('sha256',String(process.env.SUPABASE_SERVICE_ROLE_KEY || ''))
+      .update(telefone + '|' + verificacaoId).digest('hex');
+    if (timingSafeEqual(Buffer.from(assinatura,'hex'),Buffer.from(esperado,'hex'))) {
+      const {data:registro} = await sb.from('fidelidade_verificacoes')
+        .select('id,telefone,verificado_em,expira_em')
+        .eq('id',verificacaoId).eq('telefone',telefone).maybeSingle();
+      telefoneConfirmado = !!registro?.verificado_em &&
+        new Date(registro.expira_em).getTime() > Date.now() &&
+        Date.now() - new Date(registro.verificado_em).getTime() < 10*60*1000;
+    }
+  }
 
   const { data: cliente } = await sb
     .from('fidelidade_clientes')
@@ -73,8 +89,8 @@ export async function POST(request) {
   if (
     !cliente.auth_user_id &&
     (
-      !cliente.email ||
-      cliente.email.toLowerCase() !== user.email.toLowerCase()
+      (!cliente.email ||
+      cliente.email.toLowerCase() !== user.email.toLowerCase()) && !telefoneConfirmado
     )
   ) {
     return NextResponse.json(
@@ -86,14 +102,17 @@ export async function POST(request) {
     );
   }
 
-  const { error: up } = await sb
+  const { data: vinculado, error: up } = await sb
     .from('fidelidade_clientes')
     .update({
       auth_user_id: user.id,
       email: user.email,
       atualizado_em: new Date().toISOString(),
     })
-    .eq('id', cliente.id);
+    .eq('id', cliente.id)
+    .is('auth_user_id',null)
+    .select('id')
+    .maybeSingle();
 
   if (up) {
     return NextResponse.json(
@@ -102,5 +121,6 @@ export async function POST(request) {
     );
   }
 
+  if (!vinculado && cliente.auth_user_id !== user.id) return NextResponse.json({ erro: 'Esta conta já foi vinculada. Atualize a página.' }, { status: 409 });
   return NextResponse.json({ ok: true, email: user.email });
 }
