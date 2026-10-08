@@ -37,8 +37,15 @@ export async function PATCH(request){
    if(p.pagamento==='dinheiro'&&p.status_pagamento!=='pago')patch.status_pagamento='pago';
    patch.status='concluido'; patch.concluido_em=new Date().toISOString();
  }
- const {data,error}=await sb.from('pedidos').update(patch).eq('id',id).eq('status','entrega').select().single();
+ let query=sb.from('pedidos').update(patch).eq('id',id).eq('status','entrega');
+ // Atualizacao condicional: evita que dois entregadores assumam o mesmo pedido.
+ if(acao==='assumir')query=query.is('entregador_id',null);
+ else query=query.eq('entregador_id',user.id);
+ if(acao==='cheguei')query=query.is('chegou_entrega_em',null);
+ if(acao==='entregue')query=query.not('chegou_entrega_em','is',null);
+ const {data,error}=await query.select().maybeSingle();
  if(error)return NextResponse.json({erro:'falha ao atualizar entrega'},{status:500});
+ if(!data)return NextResponse.json({erro:'Esta entrega ja foi assumida ou alterada. Atualize a lista e tente novamente.'},{status:409});
  if(acao==='entregue') await processarFidelidadePedido(sb,data).catch(e=>console.error('[fidelidade] entrega:',e));
  return NextResponse.json({pedido:data});
 }
