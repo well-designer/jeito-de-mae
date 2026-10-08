@@ -15,7 +15,7 @@ export default function EntrarCliente(){
   try{
    const sb=supabaseBrowser();
    if(recuperar){
-    const {error}=await sb.auth.resetPasswordForEmail(email.trim(),{redirectTo:window.location.origin+'/redefinir-senha'});
+    const {error}=await sb.auth.resetPasswordForEmail(email.trim(),{redirectTo:'https://jeito-de-mae.vercel.app/redefinir-senha'});
     if(error)throw error;
     setAviso('Se existir uma conta com este e-mail, você receberá um link para redefinir sua senha. Confira também o spam.');return;
    }
