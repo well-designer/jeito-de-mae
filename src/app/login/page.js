@@ -1,11 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
 
 export default function Login() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
@@ -16,28 +13,28 @@ export default function Login() {
     setErro('');
     setCarregando(true);
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
-
-    setCarregando(false);
-    if (error) {
-      // Mensagem generica de proposito: nao revela se o e-mail existe.
-      setErro('E-mail ou senha incorretos.');
-      return;
-    }
     try {
-      const destinoRes = await fetch('/api/auth/destino', { cache: 'no-store' });
-      const destinoData = await destinoRes.json();
-      if (!destinoRes.ok || !destinoData.destino || destinoData.destino === '/login') {
-        setErro(destinoData.erro || 'Sua senha foi aceita, mas o servidor não conseguiu confirmar a permissão de acesso. Atualize a página e tente novamente.');
+      const res = await fetch('/api/auth/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        cache:'no-store',
+        body:JSON.stringify({email,senha}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErro(data.erro || 'Não foi possível entrar. Tente novamente.');
         return;
       }
-      window.location.assign(destinoData.destino);
+      if (!data.destino || !data.destino.startsWith('/')) {
+        setErro('O servidor não retornou um destino válido.');
+        return;
+      }
+      window.location.assign(data.destino);
     } catch {
-      setErro('Login realizado, mas houve uma falha ao verificar o acesso ao painel. Tente novamente.');
+      setErro('Falha de comunicação com o servidor. Tente novamente.');
+    } finally {
+      setCarregando(false);
     }
   }
 
