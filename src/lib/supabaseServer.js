@@ -10,12 +10,15 @@ export function supabaseSSR() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        get: (name) => store.get(name)?.value,
-        set: (name, value, options) => {
-          try { store.set({ name, value, ...options }); } catch {}
+        getAll() {
+          return store.getAll();
         },
-        remove: (name, options) => {
-          try { store.set({ name, value: '', ...options }); } catch {}
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => store.set(name, value, options));
+          } catch {
+            // Server Components nao podem gravar cookies; middleware cuida da renovacao.
+          }
         },
       },
     }
