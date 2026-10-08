@@ -11,28 +11,21 @@ import { createServerClient } from '@supabase/ssr';
  * so nunca basta.
  */
 export async function middleware(request) {
-  const response = NextResponse.next();
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        get: (name) => request.cookies.get(name)?.value,
-
-        set: (name, value, options) =>
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          }),
-
-        remove: (name, options) =>
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          }),
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
       },
     }
   );
