@@ -14,7 +14,7 @@ export default function Conta(){
    <section className="account-profile">
      <div className="account-avatar"><Icon type="user"/></div>
      <div><h1>{nome||'Jeito de Mãe'}</h1><p>{logado?(email||'Sua conta Jeito de Mãe'):'Entre para acompanhar seus pedidos'}</p></div>
-     <Link href={logado?'/conta/dados':'/login?next=/conta'}>›</Link>
+     <Link href={logado?'/conta/dados':'/entrar?next=/conta'}>›</Link>
    </section>
 
    <Link href="/fidelidade" className="profile-points-card"><div><small>MEUS PONTOS</small><strong>{saldo} pontos</strong></div><span>Ver recompensas ›</span></Link>
@@ -27,6 +27,6 @@ export default function Conta(){
      <Link href="/conta/dados"><span><Icon type="user"/></span><div><b>Dados da conta</b><small>Nome, telefone e e-mail</small></div><i>›</i></Link>
      <Link href="/conta/notificacoes"><span><Icon type="bell"/></span><div><b>Notificações</b><small>Promoções, novidades e status</small></div><i>›</i></Link>
    </section>
-   {!logado&&<Link className="btn profile-login-btn" href="/login?next=/conta">Entrar ou criar conta</Link>}
+   {!logado&&<Link className="btn profile-login-btn" href="/entrar?next=/conta">Entrar ou criar conta</Link>}
  </main><CustomerBottomNav/></>;
 }
