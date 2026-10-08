@@ -12,7 +12,8 @@ export default function PromoCampaign({banners=[],produtos=[]}){
  if(!open||!item)return null;
  const title=banner?.titulo||product?.nome||'';
  const photo=banner?.imagem_url||product?.foto_url;
- const price=!banner&&product?.opcoes?.length?Math.min(...product.opcoes.map(o=>Number(o.preco)).filter(Number.isFinite)):null;
+ const prices=(!banner&&product?.opcoes?.length?product.opcoes:[]).map(o=>Number(o.preco)).filter(v=>Number.isFinite(v)&&v>0);
+ const price=prices.length?Math.min(...prices):null;
  function cta(){close();const link=banner?.link;if(link&&link.startsWith('/')&&!link.startsWith('//')){window.location.assign(link)}else{document.getElementById('cardapio')?.scrollIntoView({behavior:'smooth'})}}
  return <div className="jm-live-promo-overlay" onClick={close}><section className="jm-live-promo" role="dialog" aria-modal="true" aria-labelledby="jm-live-promo-title" onClick={e=>e.stopPropagation()}><button className="jm-live-promo-close" onClick={close} aria-label="Fechar promoção">×</button><div className="jm-live-promo-copy"><small>✦ JEITO DE MÃE DELÍCIAS CASEIRAS ✦</small><p>Hoje tem sabor de casa!</p><h2 id="jm-live-promo-title">{title}</h2>{banner?.texto&&<p className="jm-live-promo-description">{banner.texto}</p>}</div><div className="jm-live-promo-photo"><img src={photo} alt={title}/>{price!=null&&Number.isFinite(price)&&<span>A partir de <strong>{price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></span>}</div><div className="jm-live-promo-bottom"><p>Preparado com carinho, especialmente para você ♡</p><button onClick={cta}>{banner?.cta||'Ver cardápio'} <span>→</span></button></div></section></div>
 }
