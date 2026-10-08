@@ -162,3 +162,34 @@ body{background:var(--jm-bg)!important;color:var(--jm-text)!important;padding-bo
 .delivery-code-illustration{height:250px;background:linear-gradient(180deg,#fff3ed,#fff8f4);display:grid;place-items:end center;overflow:hidden}.delivery-woman{width:190px;height:205px;border-radius:90px 90px 20px 20px;background:linear-gradient(145deg,#f4c1a7,#a72e16);position:relative;display:grid;place-items:center;color:#fff;box-shadow:0 16px 30px rgba(113,44,27,.12)}.delivery-woman:before{content:"";position:absolute;top:22px;width:82px;height:82px;border-radius:50%;background:#f4c6aa;border:12px solid #4b241b}.delivery-woman span{margin-top:95px;font-family:Georgia,serif;font-size:28px;font-weight:900}.delivery-woman b{position:absolute;right:20px;bottom:38px;font-size:32px}
 .delivery-code-content{width:min(430px,100%);margin:auto;padding:22px 16px}.delivery-code-content h2{text-align:center;font-size:21px;margin:0 0 16px}.delivery-code-card{background:#f7f6f5;border-radius:18px;padding:24px;text-align:center}.delivery-code-card strong{display:block;font-size:42px;letter-spacing:12px}.delivery-code-card button{border:0;background:transparent;color:#aaa;font-weight:800;margin-top:12px}.delivery-code-off{margin-top:15px;padding:13px;border-radius:13px;background:#fff6ef;border:1px solid #f3ddcf}.delivery-code-off b{font-size:11px;color:var(--jm-app-orange)}.delivery-code-off p{font-size:9.5px;line-height:1.5;color:var(--jm-muted);margin:4px 0 0}.delivery-code-rules{list-style:none;padding:0;margin:18px 0}.delivery-code-rules li{position:relative;padding:10px 0 10px 28px;color:#6f6966;font-size:10.5px;line-height:1.4}.delivery-code-rules li:before{content:"✓";position:absolute;left:3px;color:var(--jm-app-orange);font-weight:900}
 @media(min-width:700px){.account-page,.orders-page,.delivery-code-content{max-width:480px;margin-left:auto!important;margin-right:auto!important}}
+
+
+/* App mobile visual — home, cardapio e acesso do cliente */
+@media(max-width:699px){
+ body:has(.app-store-head){background:#fffaf6}
+ .app-store-head{background:#fffaf6!important;overflow:hidden}
+ .app-welcome-bar{display:flex;align-items:center;gap:12px;padding:18px 18px 13px;max-width:600px;margin:auto}
+ .app-welcome-dot{width:40px;height:40px;border-radius:14px;background:#fce4d4;color:#a9361b;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+ .app-welcome-bar>div{flex:1;min-width:0}.app-welcome-bar small{display:block;font-size:9px;letter-spacing:1.2px;color:#b5482a;font-weight:800}.app-welcome-bar strong{display:block;font-size:14px;line-height:1.35;color:#3c2520;margin-top:3px}
+ .app-welcome-avatar{width:40px;height:40px;border-radius:50%;background:white;border:1px solid #eedbd0;display:grid;place-items:center;color:#ae4026;text-decoration:none;font-size:23px}
+ .app-store-head .store-banner{border-radius:0 0 26px 26px!important;overflow:hidden}
+ .app-store-head .store-hero{border-radius:22px!important;margin:-24px 14px 12px!important;position:relative;z-index:2;background:white!important;box-shadow:0 12px 32px rgba(99,46,25,.09)!important;border:1px solid #f4e8df!important;padding:17px!important}
+ .app-store-head .store-logo{box-shadow:0 5px 14px rgba(92,36,21,.07)}
+ .app-home-feature{background:#fffaf6;padding-top:10px!important}
+ .app-section-heading{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 14px}
+ .app-section-heading small,.app-menu-heading>span{font-size:9px;letter-spacing:1.6px;font-weight:900;color:#b5482a}
+ .app-section-heading h2,.app-menu-heading h2{font-size:24px;letter-spacing:-.8px;color:#38231d;line-height:1.12;margin:5px 0 0;font-weight:850}
+ .app-section-heading>span{font-size:25px;color:#bd5132}
+ .smart-banner-stack{display:flex!important;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px!important;padding:0 16px 8px!important;scrollbar-width:none}.smart-banner-stack::-webkit-scrollbar{display:none}
+ .smart-banner-stack .smart-banner{min-width:calc(100vw - 48px);max-width:410px;scroll-snap-align:center;flex-shrink:0;border-radius:20px!important;min-height:180px!important;box-shadow:0 12px 25px rgba(82,31,21,.11)}
+ .app-home-feature>.smart-banner{margin:0 16px!important;border-radius:20px!important}
+ .home-benefits{margin:14px 16px 20px!important;gap:10px!important}
+ .home-benefits article{background:white!important;border:1px solid #f1e5dd!important;border-radius:16px!important}
+ .app-menu-heading{padding:24px 18px 12px;background:white}.app-menu-heading h2 span{color:#bb5534}.app-menu-heading p{font-size:12px;color:#9a8980;margin:8px 0 0}
+ .store-tabs{background:white!important}.store-search{margin-top:12px!important}
+ .menu-section{scroll-margin-top:90px}.card{border-radius:17px!important;box-shadow:0 4px 18px rgba(62,32,22,.045)!important;overflow:hidden}
+ .card-photo{border-radius:13px!important}.card-add{background:#b44223!important}
+ .customer-bottom-nav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;z-index:90!important;padding-bottom:env(safe-area-inset-bottom)!important;height:calc(66px + env(safe-area-inset-bottom))!important;border-radius:19px 19px 0 0!important}
+}
+@media(min-width:700px){.app-welcome-bar,.app-section-heading,.app-menu-heading{display:none}}
+.customer-auth-page{min-height:100dvh;background:#fffaf6;padding:28px 20px 40px;display:flex;flex-direction:column;align-items:center;color:#3c2820}.customer-auth-brand,.customer-auth-form{width:min(100%,420px)}.customer-auth-brand>a{color:#a93b22;text-decoration:none;font-size:13px;font-weight:800}.customer-auth-brand>span{display:block;font-size:11px;font-weight:900;letter-spacing:2px;color:#b43a16;margin-top:42px}.customer-auth-brand h1{font-size:29px;line-height:1.12;margin:12px 0 8px}.customer-auth-brand p{font-size:13px;line-height:1.5;color:#85766d;margin:0 0 24px}.customer-auth-form{background:white;border:1px solid #f1e3da;border-radius:23px;padding:22px;box-shadow:0 12px 35px rgba(82,34,20,.05);display:grid;gap:14px}.customer-auth-form label{font-size:12px;font-weight:800;display:grid;gap:7px}.customer-auth-form input{width:100%;border:1px solid #e9dcd3;border-radius:12px;padding:13px;font-size:14px;outline:none;background:#fff}.customer-auth-form input:focus{border-color:#b43a16}.customer-auth-form button{border:0;border-radius:12px;background:#b43a16;color:#fff;padding:14px;font-weight:900}.customer-auth-form .customer-auth-switch{background:#fff5ee;color:#a93b22}.customer-auth-footer{font-size:11px;color:#9b877e;margin-top:22px}.customer-error{color:#b42318;font-size:12px}.customer-auth-notice{color:#247344;font-size:12px}
