@@ -54,7 +54,7 @@ export default function MeusPedidos() {
 
     {!carregando && !logado && <section className="orders-lookup">
       <div className="orders-lookup-title"><b>Entre na sua conta</b><small>Seus pedidos, pontos e recompensas ficam ligados à sua conta Jeito de Mãe.</small></div>
-      <Link className="btn" href="/login?next=/meus-pedidos">Entrar ou criar conta</Link>
+      <Link className="btn" href="/entrar?next=/meus-pedidos">Entrar ou criar conta</Link>
     </section>}
 
     {!carregando && logado && erro && <div className="customer-error">{erro}</div>}
