@@ -9,6 +9,8 @@ const icons={
 };
 export default function CustomerBottomNav(){
  const pathname=usePathname();
+ const [hash,setHash]=require('react').useState('');
+ require('react').useEffect(()=>{const sync=()=>setHash(window.location.hash);sync();window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync)},[pathname]);
  const items=[{href:'/',label:'Início',icon:'home'},{href:'/#cardapio',label:'Cardápio',icon:'menu'},{href:'/meus-pedidos',label:'Pedidos',icon:'orders'},{href:'/conta',label:'Perfil',icon:'profile'}];
- return <nav className="customer-bottom-nav" aria-label="Navegação principal">{items.map(item=>{const active=item.href==='/'?pathname==='/':item.href.includes('#')?false:pathname.startsWith(item.href);return <Link key={item.href} href={item.href} className={active?'active':''} aria-current={active?'page':undefined}><svg aria-hidden="true" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg><b>{item.label}</b></Link>})}</nav>
+ return <nav className="customer-bottom-nav" aria-label="Navegação principal">{items.map(item=>{const active=item.href==='/'?pathname==='/'&&hash!=='#cardapio':item.href.includes('#')?pathname==='/'&&hash==='#cardapio':pathname.startsWith(item.href);return <Link key={item.href} href={item.href} className={active?'active':''} aria-current={active?'page':undefined}><svg aria-hidden="true" width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{icons[item.icon]}</svg><b>{item.label}</b></Link>})}</nav>
 }
