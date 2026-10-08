@@ -39,6 +39,8 @@ export async function POST(request) {
     return NextResponse.json({ erro:'Conta autenticada, mas sem permissão operacional. Verifique o perfil com o administrador.' }, { status:403 });
   }
   response.headers.set('Cache-Control','no-store');
-  const payload = JSON.stringify({ destino:DESTINOS[perfil.papel] });
-  return new Response(payload, { status:200, headers: new Headers([...response.headers, ['Content-Type','application/json']]) });
+  const final = NextResponse.json({ destino:DESTINOS[perfil.papel] });
+  response.cookies.getAll().forEach(cookie => final.cookies.set(cookie));
+  final.headers.set('Cache-Control','no-store');
+  return final;
 }
