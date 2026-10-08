@@ -1,32 +1,21 @@
 'use client';
 import Link from 'next/link';
-import { useEffect,useState } from 'react';
+import {useEffect,useState} from 'react';
+import {useRouter} from 'next/navigation';
 import CustomerBottomNav from '@/components/CustomerBottomNav';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import {supabaseBrowser} from '@/lib/supabaseBrowser';
 import '../loja-v15.css';
-
-const Icon=({type})=>{const p={user:'M20 21a8 8 0 0 0-16 0m12-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0',pin:'M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Zm0-9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',bag:'M6 8h12l1 13H5L6 8Zm3 0V6a3 3 0 0 1 6 0v2',gift:'M4 10h16v11H4V10Zm8 0v11M3 6h18v4H3V6Zm9 0c-4 0-5-5-2-5 2 0 2 3 2 5Zm0 0c4 0 5-5 2-5-2 0-2 3-2 5Z',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4',lock:'M6 10h12v11H6V10Zm3 0V7a3 3 0 0 1 6 0v3'};return <svg viewBox="0 0 24 24"><path d={p[type]}/></svg>};
-
+const icons={bag:'M6 7h12l1 14H5L6 7Zm3 0V5a3 3 0 0 1 6 0v2',gift:'M4 10h16v11H4V10Zm8 0v11M3 6h18v4H3V6Zm9 0c-4 0-5-5-2-5 2 0 2 3 2 5Zm0 0c4 0 5-5 2-5-2 0-2 3-2 5Z',pin:'M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Zm0-9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',user:'M20 21a8 8 0 0 0-16 0m12-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 4h4',help:'M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3m0 4h.01',logout:'M10 4H5v16h5m3-4 4-4-4-4m4 4H9'};
+function Icon({name}){return <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={icons[name]}/></svg>}
+const rows=[['bag','Meus pedidos','Acompanhe seus pedidos','/meus-pedidos'],['gift','Recompensas e Benefícios','Pontos, produtos e novidades','/fidelidade'],['pin','Endereços','Seus endereços de entrega','/conta/endereco'],['user','Dados da conta','Nome, telefone e e-mail','/conta/dados'],['bell','Notificações','Promoções e novidades','/conta/notificacoes']];
 export default function Conta(){
- const [nome,setNome]=useState('');const [email,setEmail]=useState('');const [saldo,setSaldo]=useState(0);const [logado,setLogado]=useState(false);
- useEffect(()=>{(async()=>{try{const {data}=await supabaseBrowser().auth.getSession();const s=data.session;if(!s)return;setLogado(true);setEmail(s.user.email||'');const local=JSON.parse(localStorage.getItem('jm_cliente')||'null');setNome(local?.nome||s.user.user_metadata?.nome||'');const r=await fetch('/api/fidelidade/conta',{headers:{Authorization:'Bearer '+s.access_token}});if(r.ok){const d=await r.json();setSaldo(d.cliente?.saldo||0);if(d.cliente?.nome)setNome(d.cliente.nome)}}catch{}})()},[]);
- return <><main className="account-page app-profile-page">
-   <section className="account-profile">
-     <div className="account-avatar"><Icon type="user"/></div>
-     <div><h1>{nome||'Jeito de Mãe'}</h1><p>{logado?(email||'Sua conta Jeito de Mãe'):'Entre para acompanhar seus pedidos'}</p></div>
-     <Link href={logado?'/conta/dados':'/entrar?next=/conta'}>›</Link>
-   </section>
-
-   <Link href="/fidelidade" className="profile-points-card"><div><small>MEUS PONTOS</small><strong>{saldo} pontos</strong></div><span>Ver recompensas ›</span></Link>
-
-   <section className="account-menu profile-menu">
-     <Link href="/meus-pedidos"><span><Icon type="bag"/></span><div><b>Meus pedidos</b><small>Acompanhe seus pedidos</small></div><i>›</i></Link>
-     <Link href="/fidelidade"><span><Icon type="gift"/></span><div><b>Recompensas e Benefícios</b><small>Pontos, produtos e novidades</small></div><i>›</i></Link>
-     <Link href="/conta/endereco"><span><Icon type="pin"/></span><div><b>Endereços</b><small>Seus endereços de entrega</small></div><i>›</i></Link>
-     <Link href="/conta/codigo-entrega"><span><Icon type="lock"/></span><div><b>Código de entrega</b><small>Segurança na confirmação do pedido</small></div><i>›</i></Link>
-     <Link href="/conta/dados"><span><Icon type="user"/></span><div><b>Dados da conta</b><small>Nome, telefone e e-mail</small></div><i>›</i></Link>
-     <Link href="/conta/notificacoes"><span><Icon type="bell"/></span><div><b>Notificações</b><small>Promoções, novidades e status</small></div><i>›</i></Link>
-   </section>
-   {!logado&&<Link className="btn profile-login-btn" href="/entrar?next=/conta">Entrar ou criar conta</Link>}
- </main><CustomerBottomNav/></>;
+ const router=useRouter(),[nome,setNome]=useState(''),[email,setEmail]=useState(''),[saldo,setSaldo]=useState(null),[logado,setLogado]=useState(false);
+ useEffect(()=>{(async()=>{try{const {data:{session}}=await supabaseBrowser().auth.getSession();if(!session)return;setLogado(true);setEmail(session.user.email||'');const local=JSON.parse(localStorage.getItem('jm_cliente')||'null');setNome(local?.nome||session.user.user_metadata?.nome||'');const r=await fetch('/api/fidelidade/conta',{headers:{Authorization:'Bearer '+session.access_token}});if(r.ok){const d=await r.json();if(typeof d.cliente?.saldo==='number')setSaldo(d.cliente.saldo);if(d.cliente?.nome)setNome(d.cliente.nome)}}catch{}})()},[]);
+ async function sair(){await supabaseBrowser().auth.signOut();router.replace('/');router.refresh()}
+ return <><main className="jm-new-profile"><header className="jm-new-profile__title"><Link href="/" aria-label="Voltar">‹</Link><h1>Meu perfil</h1><span>♡</span></header><section className="jm-new-profile__hero"><div className="jm-new-profile__avatar">{nome?nome.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase():'♡'}</div><div><h2>{logado?(nome||'Minha conta'):'Olá, seja bem-vindo!'}</h2><p>{logado?'Cliente Jeito de Mãe':'Entre para ter tudo em um só lugar'}</p><small>{email}</small></div><Link href={logado?'/conta/dados':'/entrar?next=/conta'} aria-label="Dados da conta">›</Link></section>
+ {saldo!==null&&<Link href="/fidelidade" className="jm-new-profile__points"><span>✦</span><div><small>MEUS PONTOS</small><strong>{saldo.toLocaleString('pt-BR')} pontos</strong></div><b>Ver recompensas ›</b></Link>}
+ <div className="jm-new-profile__section-title">MINHA CONTA</div><section className="jm-new-profile__list">{rows.map(([icon,title,desc,href])=><Link href={href} key={href}><span className="jm-new-profile__icon"><Icon name={icon}/></span><span className="jm-new-profile__rowtext"><b>{title}</b><small>{desc}</small></span><i>›</i></Link>)}</section>
+ <div className="jm-new-profile__section-title">AJUDA E SEGURANÇA</div><section className="jm-new-profile__list"><Link href="/conta/codigo-entrega"><span className="jm-new-profile__icon"><Icon name="user"/></span><span className="jm-new-profile__rowtext"><b>Código de entrega</b><small>Recurso em preparação — desativado</small></span><i>›</i></Link></section>
+ {logado?<button className="jm-new-profile__exit" onClick={sair}><Icon name="logout"/> Sair da conta</button>:<Link className="jm-new-profile__signin" href="/entrar?next=/conta">Entrar ou criar conta</Link>}
+ <footer>Feito com carinho, do nosso jeito. ♡</footer></main><CustomerBottomNav/></>;
 }
