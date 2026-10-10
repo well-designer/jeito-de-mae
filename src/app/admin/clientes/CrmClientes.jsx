@@ -71,7 +71,12 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'start'}}><div><h2 style={{margin:'0 0 4px'}}>{selecionado.nome}</h2><div>{selecionado.telefone}</div></div><button style={css.button} onClick={()=>setSelecionado(null)}>Fechar</button></div>
         <h3>Resumo do cliente</h3>
         <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>
-          {[['Compras válidas',selecionado.pedidos],['Total pago',fmt(selecionado.total)],['Ticket médio',fmt(selecionado.pedidos?selecionado.total/selecionado.pedidos:0)],['Última compra',dataBR(selecionado.ultima)]].map(([k,v])=><div key={k} style={css.card}><small>{k}</small><div style={{fontSize:20,fontWeight:700}}>{v}</div></div>)}
+          {[['Compras válidas',selecionado.pedidos],['Total pago',fmt(selecionado.total)],['Ticket médio',fmt(selecionado.pedidos?selecionado.total/selecionado.pedidos:0)],['Última compra',dataBR(selecionado.ultima)],['Pontos disponíveis',selecionado.pontosDisponiveis===null?'Não vinculado':selecionado.pontosDisponiveis+' pts']].map(([k,v])=><div key={k} style={css.card}><small>{k}</small><div style={{fontSize:20,fontWeight:700}}>{v}</div></div>)}
+        </div>
+        <h3>Fidelidade</h3>
+        <div style={css.card}>
+          <strong>{selecionado.pontosDisponiveis===null?'Sem saldo vinculado':'Saldo disponível: '+selecionado.pontosDisponiveis+' pontos'}</strong>
+          <p style={{fontSize:12,color:'#756454'}}>Saldo consultado diretamente do cadastro oficial de fidelidade. Resgates e movimentações continuam no módulo de fidelidade existente.</p>
         </div>
         <h3>Preferências de consumo</h3>
         {selecionado.produtosFavoritos?.length ? <div style={css.card}>
