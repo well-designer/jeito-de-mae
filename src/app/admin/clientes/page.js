@@ -60,12 +60,15 @@ export default async function ClientesCRM() {
   for(const contato of historicoContatos||[]){
     if(!ultimoContato.has(contato.cliente_chave))ultimoContato.set(contato.cliente_chave,contato.criado_em);
   }
+  const {data:preferencias,error:erroPreferencias}=await sb.from('crm_consentimentos')
+    .select('cliente_chave,status').limit(5000);
+  const preferenciasPorCliente=new Map((preferencias||[]).map(p=>[p.cliente_chave,p.status]));
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
     const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
-    return {...c,diasSemComprar,ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
+    return {...c,diasSemComprar,consentimentoPromocional:erroPreferencias?'indisponivel':(preferenciasPorCliente.get(c.id)||'nao_informado'),ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
       vip:c.pedidos>=10||c.total>=500,
     };
@@ -76,6 +79,7 @@ export default async function ClientesCRM() {
     <p style={{color:'#756454'}}>Pedidos reais, preferências de consumo e saldo oficial de fidelidade (consulta somente leitura).</p>
     {erroFidelidade&&<p role="status">O saldo de fidelidade está temporariamente indisponível; os demais dados continuam acessíveis.</p>}
     {erroContatos&&<p role="status">Indicadores de contatos indisponíveis temporariamente.</p>}
+    {erroPreferencias&&<p role="alert">Preferências promocionais indisponíveis; nenhuma autorização deve ser presumida.</p>}
     {error?<p role="alert">Não foi possível consultar os pedidos. Nenhum dado foi alterado.</p>:<CrmClientes clientes={lista} limite={LIMITE}/>}
   </main>;
 }
