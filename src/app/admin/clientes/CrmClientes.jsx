@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 
 const fmt = n => Number(n || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
 const dataBR = s => s ? new Date(s).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '—';
+const statusPromocional = s => ({autorizado:'Autorizado (registro interno)',revogado:'Revogado',nao_informado:'Não informado',indisponivel:'Indisponível'})[s]||'Não informado';
 const SEG = ['Todos','Novo','Recorrente ativo','Inativo','Recorrente inativo','VIP'];
 const precisaAcompanhamento = c => c.pedidos > 0 && c.diasSemComprar !== null && c.diasSemComprar >= 30
   && (!c.ultimoContato || Date.now() - new Date(c.ultimoContato).getTime() >= 14 * 86400000);
@@ -179,12 +180,12 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <button style={css.button} onClick={()=>downloadCsv([['Nome','Telefone','Pedidos válidos','Total pago','Última compra','Segmento'],...filtrados.map(c=>[c.nome,c.telefone,c.pedidos,c.total.toFixed(2),dataBR(c.ultima),c.segmento])])}>Exportar CSV</button>
       </div>
       <div style={{overflowX:'auto'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',minWidth:650}}>
-          <thead><tr>{['Cliente','Última compra','Último atendimento','Pedidos','Total pago','Segmento'].map(t=><th key={t} style={css.th}>{t}</th>)}</tr></thead>
+        <table style={{width:'100%',borderCollapse:'collapse',minWidth:790}}>
+          <thead><tr>{['Cliente','Última compra','Último atendimento','Pedidos','Total pago','Segmento','Marketing'].map(t=><th key={t} style={css.th}>{t}</th>)}</tr></thead>
           <tbody>{filtrados.slice((atual-1)*porPagina,atual*porPagina).map(c=><tr key={c.id}>
             <td style={css.td}><button onClick={()=>setSelecionado(c)} style={{background:'none',border:0,padding:0,textAlign:'left',cursor:'pointer',color:'#a9432a',fontWeight:700}}>{c.nome}</button><div style={{fontSize:12,color:'#756454'}}>{c.telefone}</div></td>
             <td style={css.td}>{dataBR(c.ultima)}</td><td style={css.td}>{dataBR(c.ultimoContato)}</td><td style={css.td}>{c.pedidos}</td><td style={css.td}>{fmt(c.total)}</td>
-            <td style={css.td}>{c.segmento}{c.vip?' · VIP':''}</td>
+            <td style={css.td}>{c.segmento}{c.vip?' · VIP':''}</td><td style={css.td}>{statusPromocional(c.consentimentoPromocional)}</td>
           </tr>)}</tbody>
         </table>
         {!filtrados.length&&<p>Nenhum cliente encontrado.</p>}
@@ -194,6 +195,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <div style={{display:'flex',gap:8}}><button style={css.button} disabled={atual===1} onClick={()=>setPagina(atual-1)}>Anterior</button><button style={css.button} disabled={atual===paginas} onClick={()=>setPagina(atual+1)}>Próxima</button></div>
       </div>
     </section>}
+    <p style={{fontSize:12,color:'#756454'}}>Marketing: “Autorizado” representa somente registro administrativo, não comprovação independente de opt-in. Nenhum envio automático está habilitado.</p>
     <p style={{fontSize:12,color:'#756454'}}>A acompanhar: compra válida há pelo menos 30 dias e sem atendimento registrado nos últimos 14 dias. Sugestão interna para revisão manual, não autorização para marketing.</p>
     <p style={{fontSize:12,color:'#756454'}}>Dados derivados dos até {limite.toLocaleString('pt-BR')} pedidos mais recentes. Segmentação e valores podem estar incompletos se houver mais pedidos no histórico. VIP: 10 compras válidas ou R$ 500 pagos (critério inicial, apenas para o CRM).</p>
     {selecionado&&aba==='clientes'&&<div role="presentation" onClick={()=>setSelecionado(null)} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(30,20,12,.55)',display:'flex',justifyContent:'flex-end'}}>
