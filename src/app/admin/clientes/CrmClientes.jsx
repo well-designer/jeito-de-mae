@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 const fmt = n => Number(n || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
 const dataBR = s => s ? new Date(s).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '—';
@@ -15,7 +15,11 @@ const css = {
   td:{padding:'12px 10px',borderBottom:'1px solid #eee6db',verticalAlign:'top'},
 };
 function downloadCsv(rows){
-  const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const csv='\uFEFF'+rows.map(row=>row.map(v=>{
+    const valor=String(v??'');
+    const seguro=/^[\\s]*[=+@-]/.test(valor)?"'"+valor:valor;
+    return '"'+seguro.replace(/"/g,'""')+'"';
+  }).join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='clientes-jeito-de-mae.csv';a.click();
   URL.revokeObjectURL(url);
@@ -30,10 +34,12 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [mensagemAtendimento,setMensagemAtendimento]=useState('');
   const [aba,setAba]=useState('clientes');
   const [contatos,setContatos]=useState([]);
+  const consultaAtual=useRef(0);
   const [statusContato,setStatusContato]=useState('');
   const [observacao,setObservacao]=useState('');
   const [salvandoContato,setSalvandoContato]=useState(false);
   const selecionarAtendimento=async id=>{
+    const consulta=++consultaAtual.current;
     const cliente=clientes.find(c=>c.id===id)||null;
     setSelecionado(cliente);setMensagemAtendimento('');setContatos([]);setStatusContato('');
     if(!cliente)return;
@@ -41,8 +47,8 @@ export default function CrmClientes({clientes=[],limite=1000}){
       const r=await fetch('/api/admin/crm/contatos?cliente='+encodeURIComponent(cliente.id));
       const d=await r.json();
       if(!r.ok)throw Error(d.erro||'Histórico indisponível');
-      setContatos(d.contatos||[]);
-    }catch(e){setStatusContato(e.message)}
+      if(consulta===consultaAtual.current)setContatos(d.contatos||[]);
+    }catch(e){if(consulta===consultaAtual.current)setStatusContato(e.message)}
   };
   const registrarContato=async()=>{
     if(!selecionado||salvandoContato)return;
@@ -172,7 +178,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
           {Array.isArray(p.itens)?<ul>{p.itens.map((item,i)=><li key={i}>{String(item.quantidade??item.qtd??1)}× {String(item.nome??item.name??'Produto')}</li>)}</ul>:<p>Itens indisponíveis neste pedido.</p>}
         </details>)}
         {!selecionado.historico.length&&<p>Sem pedidos no histórico consultado.</p>}
-        <p style={{fontSize:12,color:'#756454'}}>O histórico completo e a fidelidade serão conectados em etapas posteriores. Nenhum resgate ou mensagem é realizado por esta tela.</p>
+        <p style={{fontSize:12,color:'#756454'}}>Esta tela mostra os pedidos consultados e o saldo oficial de fidelidade. Nenhum resgate ou mensagem é realizado por esta tela.</p>
       </section>
     </div>}
   </div>;
