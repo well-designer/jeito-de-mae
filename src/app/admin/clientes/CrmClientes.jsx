@@ -75,7 +75,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const resumo=[
     ['Clientes',clientes.length],['Recorrentes',clientes.filter(c=>c.pedidos>=2).length],
     ['Inativos (30 dias)',clientes.filter(c=>c.diasSemComprar>=30).length],
-    ['VIPs',clientes.filter(c=>c.vip).length]
+    ['VIPs',clientes.filter(c=>c.vip).length],['Com atendimento',clientes.filter(c=>c.ultimoContato).length]
   ];
   return <div style={{fontFamily:'system-ui,sans-serif',color:'#2b2118'}}>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:18}}>
@@ -123,10 +123,10 @@ export default function CrmClientes({clientes=[],limite=1000}){
       </div>
       <div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',minWidth:650}}>
-          <thead><tr>{['Cliente','Última compra','Pedidos','Total pago','Segmento'].map(t=><th key={t} style={css.th}>{t}</th>)}</tr></thead>
+          <thead><tr>{['Cliente','Última compra','Último atendimento','Pedidos','Total pago','Segmento'].map(t=><th key={t} style={css.th}>{t}</th>)}</tr></thead>
           <tbody>{filtrados.slice((atual-1)*porPagina,atual*porPagina).map(c=><tr key={c.id}>
             <td style={css.td}><button onClick={()=>setSelecionado(c)} style={{background:'none',border:0,padding:0,textAlign:'left',cursor:'pointer',color:'#a9432a',fontWeight:700}}>{c.nome}</button><div style={{fontSize:12,color:'#756454'}}>{c.telefone}</div></td>
-            <td style={css.td}>{dataBR(c.ultima)}</td><td style={css.td}>{c.pedidos}</td><td style={css.td}>{fmt(c.total)}</td>
+            <td style={css.td}>{dataBR(c.ultima)}</td><td style={css.td}>{dataBR(c.ultimoContato)}</td><td style={css.td}>{c.pedidos}</td><td style={css.td}>{fmt(c.total)}</td>
             <td style={css.td}>{c.segmento}{c.vip?' · VIP':''}</td>
           </tr>)}</tbody>
         </table>
@@ -143,7 +143,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'start'}}><div><h2 style={{margin:'0 0 4px'}}>{selecionado.nome}</h2><div>{selecionado.telefone}</div></div><button style={css.button} onClick={()=>setSelecionado(null)}>Fechar</button></div>
         <h3>Resumo do cliente</h3>
         <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>
-          {[['Compras válidas',selecionado.pedidos],['Total pago',fmt(selecionado.total)],['Ticket médio',fmt(selecionado.pedidos?selecionado.total/selecionado.pedidos:0)],['Última compra',dataBR(selecionado.ultima)],['Pontos disponíveis',selecionado.pontosDisponiveis===null?'Não vinculado':selecionado.pontosDisponiveis+' pts']].map(([k,v])=><div key={k} style={css.card}><small>{k}</small><div style={{fontSize:20,fontWeight:700}}>{v}</div></div>)}
+          {[['Compras válidas',selecionado.pedidos],['Total pago',fmt(selecionado.total)],['Ticket médio',fmt(selecionado.pedidos?selecionado.total/selecionado.pedidos:0)],['Última compra',dataBR(selecionado.ultima)],['Último atendimento',selecionado.ultimoContato?new Date(selecionado.ultimoContato).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Nenhum registro'],['Pontos disponíveis',selecionado.pontosDisponiveis===null?'Não vinculado':selecionado.pontosDisponiveis+' pts']].map(([k,v])=><div key={k} style={css.card}><small>{k}</small><div style={{fontSize:20,fontWeight:700}}>{v}</div></div>)}
         </div>
         <h3>Fidelidade</h3>
         <div style={css.card}>
