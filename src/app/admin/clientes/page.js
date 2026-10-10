@@ -5,15 +5,27 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import CrmClientes from './CrmClientes';
 
 export const dynamic = 'force-dynamic';
-const LIMITE = 1000;
+const LIMITE = 10000;
+const LOTE = 1000;
 
 export default async function ClientesCRM() {
   const usuario = await exigirAdmin();
   if (!usuario) redirect('/login');
 
-  const {data:pedidos,error} = await supabaseAdmin().from('pedidos')
-    .select('id,auth_user_id,cliente_nome,cliente_telefone_normalizado,cliente_telefone,criado_em,total,status,status_pagamento,itens')
-    .order('criado_em',{ascending:false}).limit(LIMITE);
+  const sb=supabaseAdmin();
+  const pedidos=[];
+  let error=null;
+  let limiteAtingido=false;
+  for(let inicio=0;inicio<LIMITE;inicio+=LOTE){
+    const {data, error:erroLote}=await sb.from('pedidos')
+      .select('id,auth_user_id,cliente_nome,cliente_telefone_normalizado,cliente_telefone,criado_em,total,status,status_pagamento,itens')
+      .order('criado_em',{ascending:false}).order('id',{ascending:false})
+      .range(inicio,inicio+LOTE-1);
+    if(erroLote){error=erroLote;break;}
+    pedidos.push(...(data||[]));
+    if((data||[]).length<LOTE)break;
+    if(inicio+LOTE===LIMITE)limiteAtingido=true;
+  }
 
   const extrairItens = itens => (Array.isArray(itens) ? itens : Array.isArray(itens?.itens) ? itens.itens : []).map(item => ({
     nome: String(item?.nome || item?.name || item?.produto_nome || '').trim(),
@@ -46,7 +58,6 @@ export default async function ClientesCRM() {
     if(p.status_pagamento==='pago')c.total+=Number(p.total||0);
   }
   // Consulta somente leitura: usa o saldo oficial, sem recalcular ou movimentar pontos.
-  const sb=supabaseAdmin();
   const {data:contasFidelidade,error:erroFidelidade}=await sb.from('fidelidade_clientes')
     .select('id,auth_user_id,telefone,saldo').limit(5000);
   const porAuth=new Map(),porTelefone=new Map();
@@ -80,6 +91,7 @@ export default async function ClientesCRM() {
     {erroFidelidade&&<p role="status">O saldo de fidelidade está temporariamente indisponível; os demais dados continuam acessíveis.</p>}
     {erroContatos&&<p role="status">Indicadores de contatos indisponíveis temporariamente.</p>}
     {erroPreferencias&&<p role="alert">Preferências promocionais indisponíveis; nenhuma autorização deve ser presumida.</p>}
+    {limiteAtingido&&<p role="alert">O histórico ultrapassou o limite de {LIMITE.toLocaleString('pt-BR')} pedidos; indicadores podem estar incompletos.</p>}
     {error?<p role="alert">Não foi possível consultar os pedidos. Nenhum dado foi alterado.</p>:<CrmClientes clientes={lista} limite={LIMITE}/>}
   </main>;
 }
