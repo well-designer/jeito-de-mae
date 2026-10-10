@@ -26,6 +26,33 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [pagina,setPagina]=useState(1);
   const [mensagemAtendimento,setMensagemAtendimento]=useState('');
   const [aba,setAba]=useState('clientes');
+  const [contatos,setContatos]=useState([]);
+  const [statusContato,setStatusContato]=useState('');
+  const [observacao,setObservacao]=useState('');
+  const [salvandoContato,setSalvandoContato]=useState(false);
+  const selecionarAtendimento=async id=>{
+    const cliente=clientes.find(c=>c.id===id)||null;
+    setSelecionado(cliente);setMensagemAtendimento('');setContatos([]);setStatusContato('');
+    if(!cliente)return;
+    try{
+      const r=await fetch('/api/admin/crm/contatos?cliente='+encodeURIComponent(cliente.id));
+      const d=await r.json();
+      if(!r.ok)throw Error(d.erro||'Histórico indisponível');
+      setContatos(d.contatos||[]);
+    }catch(e){setStatusContato(e.message)}
+  };
+  const registrarContato=async()=>{
+    if(!selecionado||salvandoContato)return;
+    setSalvandoContato(true);setStatusContato('');
+    try{
+      const r=await fetch('/api/admin/crm/contatos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cliente_chave:selecionado.id,cliente_nome:selecionado.nome,observacao})});
+      const d=await r.json();
+      if(!r.ok)throw Error(d.erro||'Falha ao registrar');
+      setContatos(prev=>[d.contato,...prev]);setObservacao('');
+      setStatusContato('Atendimento registrado manualmente. Isto não comprova envio da mensagem.');
+    }catch(e){setStatusContato(e.message)}
+    finally{setSalvandoContato(false)}
+  };
   const telefoneWhatsApp = cliente => {
     const n=String(cliente?.telefone||'').replace(/\D/g,'');
     const numero=n.length===11?'55'+n:n;
@@ -63,7 +90,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <p>Abra uma conversa de atendimento no WhatsApp com um cliente. O envio depende da confirmação manual no WhatsApp. Esta tela não envia mensagens automaticamente e não registra entrega.</p>
       <p style={{color:'#756454',fontSize:13}}>Campanhas promocionais, como reativação e ofertas, permanecerão desativadas até existir registro confiável de consentimento e descadastro.</p>
       <label style={{display:'block',marginBottom:8}}>Cliente
-        <select aria-label="Cliente para atendimento" style={{...css.input,display:'block',width:'100%',marginTop:5}} value={selecionado?.id||''} onChange={e=>{setSelecionado(clientes.find(c=>c.id===e.target.value)||null);setMensagemAtendimento('')}}>
+        <select aria-label="Cliente para atendimento" style={{...css.input,display:'block',width:'100%',marginTop:5}} value={selecionado?.id||''} onChange={e=>selecionarAtendimento(e.target.value)}>
           <option value="">Selecione um cliente</option>
           {clientes.filter(c=>telefoneWhatsApp(c)).map(c=><option key={c.id} value={c.id}>{c.nome} · {c.telefone}</option>)}
         </select>
@@ -72,6 +99,18 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <textarea aria-label="Mensagem de atendimento" style={{...css.input,display:'block',width:'100%',minHeight:100,marginTop:5}} value={mensagemAtendimento} onChange={e=>setMensagemAtendimento(e.target.value)} placeholder="Olá! Aqui é do Jeito de Mãe. Como podemos ajudar?" />
       </label>
       <button style={{...css.button,marginTop:12,background:'#b4492b',color:'white'}} disabled={!selecionado||!telefoneWhatsApp(selecionado)||!mensagemAtendimento.trim()} onClick={()=>abrirWhatsApp(selecionado)}>Abrir conversa no WhatsApp</button>
+      <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
+        <h3>Histórico de atendimento</h3>
+        <p style={{fontSize:13,color:'#756454'}}>Após realizar o atendimento, registre-o manualmente. Abrir o WhatsApp não significa que a mensagem foi enviada.</p>
+        <textarea aria-label="Observação do atendimento" style={{...css.input,width:'100%',minHeight:72}} maxLength={1000} value={observacao} onChange={e=>setObservacao(e.target.value)} placeholder="Observação interna (opcional)" />
+        <button style={{...css.button,marginTop:8}} disabled={!selecionado||salvandoContato} onClick={registrarContato}>{salvandoContato?'Salvando…':'Registrar atendimento manual'}</button>
+        {statusContato&&<p role="status">{statusContato}</p>}
+        {contatos.map(c=><div key={c.id} style={{...css.card,marginTop:8}}>
+          <strong>{new Date(c.criado_em).toLocaleString('pt-BR')}</strong>
+          <div>Atendimento registrado manualmente</div>
+          {c.observacao&&<p>{c.observacao}</p>}
+        </div>)}
+      </div>
     </section>}
     {aba==='clientes'&&<section style={css.card}>
       <div style={{display:'flex',flexWrap:'wrap',gap:10,alignItems:'center',marginBottom:16}}>
