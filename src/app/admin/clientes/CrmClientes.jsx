@@ -39,6 +39,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [observacao,setObservacao]=useState('');
   const [consentimento,setConsentimento]=useState('nao_informado');
   const [notaConsentimento,setNotaConsentimento]=useState('');
+  const [historicoConsentimento,setHistoricoConsentimento]=useState([]);
   const [salvandoConsentimento,setSalvandoConsentimento]=useState(false);
   const [carregandoPreferencia,setCarregandoPreferencia]=useState(false);
   const [erroPreferencia,setErroPreferencia]=useState('');
@@ -47,7 +48,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
     const consulta=++consultaAtual.current;
     const cliente=clientes.find(c=>c.id===id)||null;
     setSelecionado(cliente);setMensagemAtendimento('');setContatos([]);setStatusContato('');
-    setConsentimento('nao_informado');setNotaConsentimento('');setErroPreferencia('');setCarregandoPreferencia(!!cliente);
+    setConsentimento('nao_informado');setNotaConsentimento('');setHistoricoConsentimento([]);setErroPreferencia('');setCarregandoPreferencia(!!cliente);
     if(!cliente)return;
     try{
       const r=await fetch('/api/admin/crm/contatos?cliente='+encodeURIComponent(cliente.id));
@@ -57,7 +58,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
       const rc=await fetch('/api/admin/crm/consentimentos?cliente='+encodeURIComponent(cliente.id));
       const dc=await rc.json();
       if(!rc.ok)throw Error(dc.erro||'Preferências indisponíveis');
-      if(consulta===consultaAtual.current){setConsentimento(dc.consentimento?.status||'nao_informado');setNotaConsentimento(dc.consentimento?.observacao||'');}
+      if(consulta===consultaAtual.current){setConsentimento(dc.consentimento?.status||'nao_informado');setNotaConsentimento(dc.consentimento?.observacao||'');setHistoricoConsentimento(dc.historico||[]);}
     }catch(e){if(consulta===consultaAtual.current){setStatusContato(e.message);setErroPreferencia(e.message)}}
     finally{if(consulta===consultaAtual.current)setCarregandoPreferencia(false)}
   };
@@ -69,6 +70,8 @@ export default function CrmClientes({clientes=[],limite=1000}){
         body:JSON.stringify({cliente_chave:selecionado.id,cliente_nome:selecionado.nome,status:consentimento,observacao:notaConsentimento})});
       const d=await r.json();
       if(!r.ok)throw Error(d.erro||'Não foi possível salvar');
+      const rc=await fetch('/api/admin/crm/consentimentos?cliente='+encodeURIComponent(selecionado.id));
+      if(rc.ok){const dc=await rc.json();setHistoricoConsentimento(dc.historico||[]);}
       setStatusContato('Preferência registrada. Nenhuma mensagem foi enviada.');
     }catch(e){setStatusContato(e.message)}
     finally{setSalvandoConsentimento(false)}
@@ -145,6 +148,12 @@ export default function CrmClientes({clientes=[],limite=1000}){
           value={notaConsentimento} onChange={e=>setNotaConsentimento(e.target.value)} placeholder="Como e quando o cliente manifestou a preferência?"/>
         <button style={{...css.button,marginTop:8}} disabled={!selecionado||salvandoConsentimento||carregandoPreferencia||!!erroPreferencia||(consentimento==='autorizado'&&!notaConsentimento.trim())}
           onClick={salvarConsentimento}>{salvandoConsentimento?'Salvando…':'Salvar preferência'}</button>
+        <h4>Histórico de preferências</h4>
+        {historicoConsentimento.length===0&&<p style={{fontSize:13}}>Nenhuma alteração registrada até agora.</p>}
+        {historicoConsentimento.map(h=><div key={h.id} style={{fontSize:13,padding:'8px 0',borderBottom:'1px solid #eee6db'}}>
+          <strong>{new Date(h.alterado_em).toLocaleString('pt-BR')}</strong> · {h.status_anterior||'Sem registro anterior'} → {h.status_novo}
+          {h.observacao&&<div>{h.observacao}</div>}
+        </div>)}
       </div>
       <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
         <h3>Histórico de atendimento</h3>
