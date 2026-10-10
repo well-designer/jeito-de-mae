@@ -15,6 +15,10 @@ export default async function ClientesCRM() {
     .select('id,auth_user_id,cliente_nome,cliente_telefone_normalizado,cliente_telefone,criado_em,total,status,status_pagamento,itens')
     .order('criado_em',{ascending:false}).limit(LIMITE);
 
+  const extrairItens = itens => (Array.isArray(itens) ? itens : Array.isArray(itens?.itens) ? itens.itens : []).map(item => ({
+    nome: String(item?.nome || item?.name || item?.produto_nome || '').trim(),
+    quantidade: Number(item?.quantidade ?? item?.qtd ?? item?.qty ?? 1),
+  })).filter(item => item.nome && Number.isFinite(item.quantidade) && item.quantidade > 0);
   const clientes = new Map();
   for (const p of pedidos || []) {
     const telefone=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
@@ -22,7 +26,7 @@ export default async function ClientesCRM() {
     const id=p.auth_user_id?'auth:'+p.auth_user_id:telefone?'tel:'+telefone:null;
     if(!id)continue;
     if(!clientes.has(id))clientes.set(id,{
-      id,telefone,nome:p.cliente_nome||'Cliente',pedidos:0,total:0,ultima:null,historico:[],
+      id,telefone,nome:p.cliente_nome||'Cliente',pedidos:0,total:0,ultima:null,primeira:null,historico:[],produtos:{},diasSemana:[0,0,0,0,0,0,0],
     });
     const c=clientes.get(id);
     c.historico.push({
@@ -33,6 +37,11 @@ export default async function ClientesCRM() {
     const valido=p.status!=='cancelado'&&(p.status==='concluido'||p.status_pagamento==='pago');
     if(!valido)continue;
     c.pedidos++;
+    if(!c.primeira || p.criado_em < c.primeira)c.primeira=p.criado_em;
+    const diaSemana=new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'America/Sao_Paulo'}).format(new Date(p.criado_em));
+    const indice={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[diaSemana];
+    if(indice!==undefined)c.diasSemana[indice]++;
+    for(const item of extrairItens(p.itens))c.produtos[item.nome]=(c.produtos[item.nome]||0)+item.quantidade;
     if(!c.ultima||p.criado_em>c.ultima)c.ultima=p.criado_em;
     if(p.status_pagamento==='pago')c.total+=Number(p.total||0);
   }
@@ -40,7 +49,7 @@ export default async function ClientesCRM() {
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
-    return {...c,diasSemComprar,
+    return {...c,diasSemComprar,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
       vip:c.pedidos>=10||c.total>=500,
     };
