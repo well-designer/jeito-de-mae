@@ -73,6 +73,16 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>
           {[['Compras válidas',selecionado.pedidos],['Total pago',fmt(selecionado.total)],['Ticket médio',fmt(selecionado.pedidos?selecionado.total/selecionado.pedidos:0)],['Última compra',dataBR(selecionado.ultima)]].map(([k,v])=><div key={k} style={css.card}><small>{k}</small><div style={{fontSize:20,fontWeight:700}}>{v}</div></div>)}
         </div>
+        <h3>Preferências de consumo</h3>
+        {selecionado.produtosFavoritos?.length ? <div style={css.card}>
+          <strong>Pratos mais pedidos</strong>
+          <ul>{selecionado.produtosFavoritos.map(([nome,quantidade])=><li key={nome}>{nome} · {quantidade} unidade(s)</li>)}</ul>
+          <strong>Dias da semana com mais compras</strong>
+          <div style={{display:'grid',gap:6,marginTop:8}}>
+            {['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].map((dia,i)=><div key={dia} style={{display:'flex',justifyContent:'space-between',gap:10}}><span>{dia}</span><strong>{selecionado.diasSemana?.[i]||0} pedido(s)</strong></div>)}
+          </div>
+          <p style={{fontSize:12,color:'#756454'}}>Preferências estimadas apenas pelos pedidos válidos disponíveis no histórico consultado.</p>
+        </div> : <p style={{color:'#756454'}}>Ainda não há itens suficientes no histórico consultado para identificar preferências.</p>}
         <h3>Histórico recente de pedidos</h3>
         {selecionado.historico.map(p=><details key={p.id} style={{...css.card,marginBottom:8}}>
           <summary style={{cursor:'pointer'}}>{dataBR(p.criado_em)} · {fmt(p.total)} · {p.status}</summary>
