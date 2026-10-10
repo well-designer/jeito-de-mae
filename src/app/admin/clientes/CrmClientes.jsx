@@ -40,12 +40,14 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [consentimento,setConsentimento]=useState('nao_informado');
   const [notaConsentimento,setNotaConsentimento]=useState('');
   const [salvandoConsentimento,setSalvandoConsentimento]=useState(false);
+  const [carregandoPreferencia,setCarregandoPreferencia]=useState(false);
+  const [erroPreferencia,setErroPreferencia]=useState('');
   const [salvandoContato,setSalvandoContato]=useState(false);
   const selecionarAtendimento=async id=>{
     const consulta=++consultaAtual.current;
     const cliente=clientes.find(c=>c.id===id)||null;
     setSelecionado(cliente);setMensagemAtendimento('');setContatos([]);setStatusContato('');
-    setConsentimento('nao_informado');setNotaConsentimento('');
+    setConsentimento('nao_informado');setNotaConsentimento('');setErroPreferencia('');setCarregandoPreferencia(!!cliente);
     if(!cliente)return;
     try{
       const r=await fetch('/api/admin/crm/contatos?cliente='+encodeURIComponent(cliente.id));
@@ -56,10 +58,11 @@ export default function CrmClientes({clientes=[],limite=1000}){
       const dc=await rc.json();
       if(!rc.ok)throw Error(dc.erro||'Preferências indisponíveis');
       if(consulta===consultaAtual.current){setConsentimento(dc.consentimento?.status||'nao_informado');setNotaConsentimento(dc.consentimento?.observacao||'');}
-    }catch(e){if(consulta===consultaAtual.current)setStatusContato(e.message)}
+    }catch(e){if(consulta===consultaAtual.current){setStatusContato(e.message);setErroPreferencia(e.message)}}
+    finally{if(consulta===consultaAtual.current)setCarregandoPreferencia(false)}
   };
   const salvarConsentimento=async()=>{
-    if(!selecionado||salvandoConsentimento)return;
+    if(!selecionado||salvandoConsentimento||carregandoPreferencia||erroPreferencia)return;
     setSalvandoConsentimento(true);setStatusContato('');
     try{
       const r=await fetch('/api/admin/crm/consentimentos',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -130,6 +133,8 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <button style={{...css.button,marginTop:12,background:'#b4492b',color:'white'}} disabled={!selecionado||!telefoneWhatsApp(selecionado)||!mensagemAtendimento.trim()} onClick={()=>abrirWhatsApp(selecionado)}>Abrir conversa no WhatsApp</button>
       <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
         <h3>Preferências de mensagens promocionais</h3>
+        {carregandoPreferencia&&<p role="status">Carregando preferência do cliente…</p>}
+        {erroPreferencia&&<p role="alert">Não foi possível confirmar a preferência anterior. Selecione novamente o cliente antes de editar.</p>}
         <p style={{fontSize:13,color:'#756454'}}>Registre apenas o que o cliente informou. Este registro não é prova independente de autorização. Nenhuma campanha será enviada por esta tela.</p>
         <label style={{display:'block',marginBottom:8}}>Situação
           <select style={{...css.input,display:'block',marginTop:5}} value={consentimento} onChange={e=>setConsentimento(e.target.value)}>
@@ -138,7 +143,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
         </label>
         <textarea aria-label="Registro da preferência" style={{...css.input,width:'100%',minHeight:64}} maxLength={1000}
           value={notaConsentimento} onChange={e=>setNotaConsentimento(e.target.value)} placeholder="Como e quando o cliente manifestou a preferência?"/>
-        <button style={{...css.button,marginTop:8}} disabled={!selecionado||salvandoConsentimento||(consentimento==='autorizado'&&!notaConsentimento.trim())}
+        <button style={{...css.button,marginTop:8}} disabled={!selecionado||salvandoConsentimento||carregandoPreferencia||!!erroPreferencia||(consentimento==='autorizado'&&!notaConsentimento.trim())}
           onClick={salvarConsentimento}>{salvandoConsentimento?'Salvando…':'Salvar preferência'}</button>
       </div>
       <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
