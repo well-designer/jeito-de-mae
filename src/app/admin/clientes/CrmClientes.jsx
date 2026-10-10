@@ -161,7 +161,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <p><strong>{publicoElegivel.length}</strong> cliente(s) com registro administrativo de autorização dentro do filtro selecionado (dados carregados).</p>
       <button style={css.button} onClick={conferirPrevia} disabled={consultandoPrevia}>{consultandoPrevia?'Conferindo…':'Conferir preferências no servidor'}</button>
       {previaServidor?.erro&&<p role="alert">{previaServidor.erro}</p>}
-      {previaServidor&&!previaServidor.erro&&<p role="status">Conferência atual no Supabase: <strong>{previaServidor.quantidade}</strong> registro(s) autorizados e {previaServidor.excluidos} excluído(s). Apenas simulação, não autoriza envios.</p>
+      {previaServidor&&!previaServidor.erro&&<p role="status">Conferência atual no Supabase: <strong>{previaServidor.quantidade}</strong> registro(s) autorizados e {previaServidor.excluidos} excluído(s). Apenas simulação, não autoriza envios.</p>}
       <p style={{fontSize:13,color:'#756454'}}>Clientes com consentimento revogado, não informado ou indisponível ficam excluídos. A seleção é uma fotografia dos dados carregados e não deve ser usada como autorização de envio.</p>
       <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead><tr><th style={css.th}>Cliente</th><th style={css.th}>Segmento</th><th style={css.th}>Preferência</th></tr></thead>
