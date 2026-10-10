@@ -52,7 +52,7 @@ export default async function ClientesCRM() {
   const porAuth=new Map(),porTelefone=new Map();
   for(const conta of contasFidelidade||[]){
     if(conta.auth_user_id)porAuth.set(String(conta.auth_user_id),conta);
-    else if(conta.telefone)porTelefone.set(String(conta.telefone).replace(/\\D/g,''),conta);
+    else if(conta.telefone)porTelefone.set(String(conta.telefone).replace(/\D/g,''),conta);
   }
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
