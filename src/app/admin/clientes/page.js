@@ -54,12 +54,18 @@ export default async function ClientesCRM() {
     if(conta.auth_user_id)porAuth.set(String(conta.auth_user_id),conta);
     else if(conta.telefone)porTelefone.set(String(conta.telefone).replace(/\D/g,''),conta);
   }
+  const {data:historicoContatos,error:erroContatos}=await sb.from('crm_contatos')
+    .select('cliente_chave,criado_em').order('criado_em',{ascending:false}).limit(5000);
+  const ultimoContato=new Map();
+  for(const contato of historicoContatos||[]){
+    if(!ultimoContato.has(contato.cliente_chave))ultimoContato.set(contato.cliente_chave,contato.criado_em);
+  }
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
     const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
-    return {...c,diasSemComprar,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
+    return {...c,diasSemComprar,ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
       vip:c.pedidos>=10||c.total>=500,
     };
@@ -69,6 +75,7 @@ export default async function ClientesCRM() {
     <h1 style={{fontFamily:'Georgia,serif',color:'#2b2118'}}>Clientes · CRM</h1>
     <p style={{color:'#756454'}}>Pedidos reais, preferências de consumo e saldo oficial de fidelidade (consulta somente leitura).</p>
     {erroFidelidade&&<p role="status">O saldo de fidelidade está temporariamente indisponível; os demais dados continuam acessíveis.</p>}
+    {erroContatos&&<p role="status">Indicadores de contatos indisponíveis temporariamente.</p>}
     {error?<p role="alert">Não foi possível consultar os pedidos. Nenhum dado foi alterado.</p>:<CrmClientes clientes={lista} limite={LIMITE}/>}
   </main>;
 }
