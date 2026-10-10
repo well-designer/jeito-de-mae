@@ -24,6 +24,20 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [ordem,setOrdem]=useState('ultima');
   const [selecionado,setSelecionado]=useState(null);
   const [pagina,setPagina]=useState(1);
+  const [mensagemAtendimento,setMensagemAtendimento]=useState('');
+  const [aba,setAba]=useState('clientes');
+  const telefoneWhatsApp = cliente => {
+    const n=String(cliente?.telefone||'').replace(/\D/g,'');
+    const numero=n.length===11?'55'+n:n;
+    return /^55\d{10,11}$/.test(numero)?numero:null;
+  };
+  const abrirWhatsApp = cliente => {
+    const numero=telefoneWhatsApp(cliente);
+    if(!numero)return;
+    const texto=mensagemAtendimento.trim();
+    if(!texto)return;
+    window.open('https://wa.me/'+numero+'?text='+encodeURIComponent(texto),'_blank','noopener,noreferrer');
+  };
   const filtrados=useMemo(()=>{
     const q=busca.toLocaleLowerCase('pt-BR').trim(), numeros=q.replace(/\D/g,'');
     return clientes.filter(c=>(!q||c.nome.toLocaleLowerCase('pt-BR').includes(q)||(numeros&&c.telefone.includes(numeros)))&&(segmento==='Todos'||(segmento==='VIP'?c.vip:c.segmento===segmento)))
@@ -40,7 +54,26 @@ export default function CrmClientes({clientes=[],limite=1000}){
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:18}}>
       {resumo.map(([rotulo,valor])=><div key={rotulo} style={css.card}><div style={{fontSize:13,color:'#756454'}}>{rotulo}</div><strong style={{fontSize:28}}>{valor}</strong></div>)}
     </div>
-    <section style={css.card}>
+    <nav aria-label="Seções do CRM" style={{display:'flex',gap:8,marginBottom:14}}>
+      <button style={{...css.button,background:aba==='clientes'?'#b4492b':'#fffdf9',color:aba==='clientes'?'white':'#2b2118'}} onClick={()=>setAba('clientes')}>Clientes</button>
+      <button style={{...css.button,background:aba==='relacionamento'?'#b4492b':'#fffdf9',color:aba==='relacionamento'?'white':'#2b2118'}} onClick={()=>setAba('relacionamento')}>Relacionamento</button>
+    </nav>
+    {aba==='relacionamento'&&<section style={css.card}>
+      <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Relacionamento · atendimento manual</h2>
+      <p>Abra uma conversa de atendimento no WhatsApp com um cliente. O envio depende da confirmação manual no WhatsApp. Esta tela não envia mensagens automaticamente e não registra entrega.</p>
+      <p style={{color:'#756454',fontSize:13}}>Campanhas promocionais, como reativação e ofertas, permanecerão desativadas até existir registro confiável de consentimento e descadastro.</p>
+      <label style={{display:'block',marginBottom:8}}>Cliente
+        <select aria-label="Cliente para atendimento" style={{...css.input,display:'block',width:'100%',marginTop:5}} value={selecionado?.id||''} onChange={e=>{setSelecionado(clientes.find(c=>c.id===e.target.value)||null);setMensagemAtendimento('')}}>
+          <option value="">Selecione um cliente</option>
+          {clientes.filter(c=>telefoneWhatsApp(c)).map(c=><option key={c.id} value={c.id}>{c.nome} · {c.telefone}</option>)}
+        </select>
+      </label>
+      <label style={{display:'block'}}>Mensagem de atendimento
+        <textarea aria-label="Mensagem de atendimento" style={{...css.input,display:'block',width:'100%',minHeight:100,marginTop:5}} value={mensagemAtendimento} onChange={e=>setMensagemAtendimento(e.target.value)} placeholder="Olá! Aqui é do Jeito de Mãe. Como podemos ajudar?" />
+      </label>
+      <button style={{...css.button,marginTop:12,background:'#b4492b',color:'white'}} disabled={!selecionado||!telefoneWhatsApp(selecionado)||!mensagemAtendimento.trim()} onClick={()=>abrirWhatsApp(selecionado)}>Abrir conversa no WhatsApp</button>
+    </section>}
+    {aba==='clientes'&&<section style={css.card}>
       <div style={{display:'flex',flexWrap:'wrap',gap:10,alignItems:'center',marginBottom:16}}>
         <input aria-label="Buscar clientes" placeholder="Buscar nome ou telefone" value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}} style={{...css.input,flex:'1 1 200px'}}/>
         <select aria-label="Segmento" value={segmento} onChange={e=>{setSegmento(e.target.value);setPagina(1)}} style={css.input}>{SEG.map(x=><option key={x}>{x}</option>)}</select>
@@ -64,9 +97,9 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <span style={{color:'#756454'}}>{filtrados.length} cliente(s) · página {atual} de {paginas}</span>
         <div style={{display:'flex',gap:8}}><button style={css.button} disabled={atual===1} onClick={()=>setPagina(atual-1)}>Anterior</button><button style={css.button} disabled={atual===paginas} onClick={()=>setPagina(atual+1)}>Próxima</button></div>
       </div>
-    </section>
+    </section>}
     <p style={{fontSize:12,color:'#756454'}}>Dados derivados dos até {limite.toLocaleString('pt-BR')} pedidos mais recentes. Segmentação e valores podem estar incompletos se houver mais pedidos no histórico. VIP: 10 compras válidas ou R$ 500 pagos (critério inicial, apenas para o CRM).</p>
-    {selecionado&&<div role="presentation" onClick={()=>setSelecionado(null)} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(30,20,12,.55)',display:'flex',justifyContent:'flex-end'}}>
+    {selecionado&&aba==='clientes'&&<div role="presentation" onClick={()=>setSelecionado(null)} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(30,20,12,.55)',display:'flex',justifyContent:'flex-end'}}>
       <section role="dialog" aria-modal="true" aria-label={'Perfil de '+selecionado.nome} onClick={e=>e.stopPropagation()} style={{background:'#fffdf9',width:'min(650px,100%)',height:'100%',overflowY:'auto',padding:24}}>
         <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'start'}}><div><h2 style={{margin:'0 0 4px'}}>{selecionado.nome}</h2><div>{selecionado.telefone}</div></div><button style={css.button} onClick={()=>setSelecionado(null)}>Fechar</button></div>
         <h3>Resumo do cliente</h3>
