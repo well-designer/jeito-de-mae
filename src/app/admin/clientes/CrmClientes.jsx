@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 const fmt = n => Number(n || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
 const dataBR = s => s ? new Date(s).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '—';
 const SEG = ['Todos','Novo','Recorrente ativo','Inativo','Recorrente inativo','VIP'];
+const precisaAcompanhamento = c => c.pedidos > 0 && c.diasSemComprar !== null && c.diasSemComprar >= 30
+  && (!c.ultimoContato || Date.now() - new Date(c.ultimoContato).getTime() >= 14 * 86400000);
 const css = {
   card:{background:'#fffdf9',border:'1px solid #e6dccb',borderRadius:10,padding:16},
   input:{padding:'10px 12px',border:'1px solid #d9cdbb',borderRadius:8,background:'#fffdf9',maxWidth:'100%'},
@@ -22,6 +24,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [busca,setBusca]=useState('');
   const [segmento,setSegmento]=useState('Todos');
   const [ordem,setOrdem]=useState('ultima');
+  const [somenteAcompanhamento,setSomenteAcompanhamento]=useState(false);
   const [selecionado,setSelecionado]=useState(null);
   const [pagina,setPagina]=useState(1);
   const [mensagemAtendimento,setMensagemAtendimento]=useState('');
@@ -67,15 +70,15 @@ export default function CrmClientes({clientes=[],limite=1000}){
   };
   const filtrados=useMemo(()=>{
     const q=busca.toLocaleLowerCase('pt-BR').trim(), numeros=q.replace(/\D/g,'');
-    return clientes.filter(c=>(!q||c.nome.toLocaleLowerCase('pt-BR').includes(q)||(numeros&&c.telefone.includes(numeros)))&&(segmento==='Todos'||(segmento==='VIP'?c.vip:c.segmento===segmento)))
+    return clientes.filter(c=>(!q||c.nome.toLocaleLowerCase('pt-BR').includes(q)||(numeros&&c.telefone.includes(numeros)))&&(segmento==='Todos'||(segmento==='VIP'?c.vip:c.segmento===segmento))&&(!somenteAcompanhamento||precisaAcompanhamento(c)))
       .sort((a,b)=>ordem==='pedidos'?b.pedidos-a.pedidos:ordem==='valor'?b.total-a.total:ordem==='nome'?a.nome.localeCompare(b.nome,'pt-BR'):String(b.ultima).localeCompare(String(a.ultima)));
-  },[clientes,busca,segmento,ordem]);
+  },[clientes,busca,segmento,ordem,somenteAcompanhamento]);
   const porPagina=15, paginas=Math.max(1,Math.ceil(filtrados.length/porPagina));
   const atual=Math.min(pagina,paginas);
   const resumo=[
     ['Clientes',clientes.length],['Recorrentes',clientes.filter(c=>c.pedidos>=2).length],
     ['Inativos (30 dias)',clientes.filter(c=>c.diasSemComprar>=30).length],
-    ['VIPs',clientes.filter(c=>c.vip).length],['Com atendimento',clientes.filter(c=>c.ultimoContato).length]
+    ['VIPs',clientes.filter(c=>c.vip).length],['Com atendimento',clientes.filter(c=>c.ultimoContato).length],['A acompanhar',clientes.filter(precisaAcompanhamento).length]
   ];
   return <div style={{fontFamily:'system-ui,sans-serif',color:'#2b2118'}}>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:18}}>
@@ -116,6 +119,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <div style={{display:'flex',flexWrap:'wrap',gap:10,alignItems:'center',marginBottom:16}}>
         <input aria-label="Buscar clientes" placeholder="Buscar nome ou telefone" value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}} style={{...css.input,flex:'1 1 200px'}}/>
         <select aria-label="Segmento" value={segmento} onChange={e=>{setSegmento(e.target.value);setPagina(1)}} style={css.input}>{SEG.map(x=><option key={x}>{x}</option>)}</select>
+        <label style={{display:'flex',gap:6,alignItems:'center',fontSize:13}}><input type="checkbox" checked={somenteAcompanhamento} onChange={e=>{setSomenteAcompanhamento(e.target.checked);setPagina(1)}}/> Precisam de acompanhamento</label>
         <select aria-label="Ordenar clientes" value={ordem} onChange={e=>setOrdem(e.target.value)} style={css.input}>
           <option value="ultima">Última compra</option><option value="pedidos">Mais pedidos</option><option value="valor">Maior valor pago</option><option value="nome">Nome</option>
         </select>
@@ -137,6 +141,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <div style={{display:'flex',gap:8}}><button style={css.button} disabled={atual===1} onClick={()=>setPagina(atual-1)}>Anterior</button><button style={css.button} disabled={atual===paginas} onClick={()=>setPagina(atual+1)}>Próxima</button></div>
       </div>
     </section>}
+    <p style={{fontSize:12,color:'#756454'}}>A acompanhar: compra válida há pelo menos 30 dias e sem atendimento registrado nos últimos 14 dias. Sugestão interna para revisão manual, não autorização para marketing.</p>
     <p style={{fontSize:12,color:'#756454'}}>Dados derivados dos até {limite.toLocaleString('pt-BR')} pedidos mais recentes. Segmentação e valores podem estar incompletos se houver mais pedidos no histórico. VIP: 10 compras válidas ou R$ 500 pagos (critério inicial, apenas para o CRM).</p>
     {selecionado&&aba==='clientes'&&<div role="presentation" onClick={()=>setSelecionado(null)} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(30,20,12,.55)',display:'flex',justifyContent:'flex-end'}}>
       <section role="dialog" aria-modal="true" aria-label={'Perfil de '+selecionado.nome} onClick={e=>e.stopPropagation()} style={{background:'#fffdf9',width:'min(650px,100%)',height:'100%',overflowY:'auto',padding:24}}>
