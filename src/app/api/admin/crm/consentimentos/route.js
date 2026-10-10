@@ -34,16 +34,10 @@ export async function POST(request) {
   // Reautorizar apos revogacao exige registro explicito de uma nova manifestacao.
   if (status==='autorizado' && !observacao)
     return NextResponse.json({erro:'Descreva a autorização fornecida pelo cliente.'},{status:400});
-  const sb=supabaseAdmin();
-  const {data:anterior,error:erroLeitura}=await sb.from('crm_consentimentos')
-    .select('status').eq('cliente_chave',chave).maybeSingle();
-  if(erroLeitura)return NextResponse.json({erro:'Não foi possível conferir a preferência atual.'},{status:503});
-  if(anterior?.status==='revogado' && status==='autorizado' && !/^nova autorização:/i.test(observacao))
-    return NextResponse.json({erro:'Após revogação, registre uma nova autorização começando a observação com "Nova autorização:".'},{status:400});
-  const {data,error}=await sb.from('crm_consentimentos').upsert({
-    cliente_chave:chave,cliente_nome:nome,status,observacao,
-    origem:'registro_administrativo',atualizado_por:user.id,atualizado_em:new Date().toISOString()
-  },{onConflict:'cliente_chave'}).select('cliente_chave,cliente_nome,status,origem,observacao,atualizado_em').single();
+  // A validacao e a gravacao sao atomicas no banco, inclusive em requisicoes concorrentes.
+  const {data,error}=await supabaseAdmin().rpc('crm_atualizar_consentimento',{
+    p_chave:chave,p_nome:nome,p_status:status,p_observacao:observacao,p_usuario:user.id
+  });
   if(error)return NextResponse.json({erro:'Não foi possível salvar a preferência.'},{status:503});
   return NextResponse.json({consentimento:data});
 }
