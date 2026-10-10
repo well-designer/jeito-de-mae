@@ -36,6 +36,8 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [aba,setAba]=useState('clientes');
   const [publicoCampanha,setPublicoCampanha]=useState('Todos');
   const [buscaCampanha,setBuscaCampanha]=useState('');
+  const [previaServidor,setPreviaServidor]=useState(null);
+  const [consultandoPrevia,setConsultandoPrevia]=useState(false);
   const [contatos,setContatos]=useState([]);
   const consultaAtual=useRef(0);
   const [statusContato,setStatusContato]=useState('');
@@ -116,6 +118,23 @@ export default function CrmClientes({clientes=[],limite=1000}){
     (publicoCampanha==='Todos'||(publicoCampanha==='VIP'?c.vip:c.segmento===publicoCampanha)) &&
     (!buscaCampanha.trim()||c.nome.toLocaleLowerCase('pt-BR').includes(buscaCampanha.toLocaleLowerCase('pt-BR').trim()))
   ),[clientes,publicoCampanha,buscaCampanha]);
+  const conferirPrevia=async()=>{
+    if(consultandoPrevia)return;
+    setConsultandoPrevia(true);setPreviaServidor(null);
+    try{
+      const r=await fetch('/api/admin/crm/campanhas/previa',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({segmento:publicoCampanha,clientes:clientes.filter(c=>
+          (publicoCampanha==='Todos'||(publicoCampanha==='VIP'?c.vip:c.segmento===publicoCampanha)) &&
+          (!buscaCampanha.trim()||c.nome.toLocaleLowerCase('pt-BR').includes(buscaCampanha.toLocaleLowerCase('pt-BR').trim()))
+        ).map(c=>c.id)})
+      });
+      const d=await r.json();
+      if(!r.ok)throw Error(d.erro||'Consulta indisponível');
+      setPreviaServidor({quantidade:d.quantidade,excluidos:d.excluidos});
+    }catch(e){setPreviaServidor({erro:e.message})}
+    finally{setConsultandoPrevia(false)}
+  };
   const resumo=[
     ['Clientes',clientes.length],['Recorrentes',clientes.filter(c=>c.pedidos>=2).length],
     ['Inativos (30 dias)',clientes.filter(c=>c.diasSemComprar>=30).length],
@@ -134,12 +153,15 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Público de campanhas · simulação</h2>
       <p>Prévia somente para planejamento. Não cria campanhas, não exporta contatos e não envia mensagens. Autorização administrativa não equivale a opt-in verificável.</p>
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14}}>
-        <select aria-label="Público da campanha" value={publicoCampanha} onChange={e=>setPublicoCampanha(e.target.value)} style={css.input}>
+        <select aria-label="Público da campanha" value={publicoCampanha} onChange={e=>{setPublicoCampanha(e.target.value);setPreviaServidor(null)}} style={css.input}>
           {SEG.map(x=><option key={x}>{x}</option>)}
         </select>
-        <input aria-label="Buscar público" placeholder="Buscar pelo nome" value={buscaCampanha} onChange={e=>setBuscaCampanha(e.target.value)} style={css.input}/>
+        <input aria-label="Buscar público" placeholder="Buscar pelo nome" value={buscaCampanha} onChange={e=>{setBuscaCampanha(e.target.value);setPreviaServidor(null)}} style={css.input}/>
       </div>
-      <p><strong>{publicoElegivel.length}</strong> cliente(s) com registro administrativo de autorização dentro do filtro selecionado.</p>
+      <p><strong>{publicoElegivel.length}</strong> cliente(s) com registro administrativo de autorização dentro do filtro selecionado (dados carregados).</p>
+      <button style={css.button} onClick={conferirPrevia} disabled={consultandoPrevia}>{consultandoPrevia?'Conferindo…':'Conferir preferências no servidor'}</button>
+      {previaServidor?.erro&&<p role="alert">{previaServidor.erro}</p>}
+      {previaServidor&&!previaServidor.erro&&<p role="status">Conferência atual no Supabase: <strong>{previaServidor.quantidade}</strong> registro(s) autorizados e {previaServidor.excluidos} excluído(s). Apenas simulação, não autoriza envios.</p>
       <p style={{fontSize:13,color:'#756454'}}>Clientes com consentimento revogado, não informado ou indisponível ficam excluídos. A seleção é uma fotografia dos dados carregados e não deve ser usada como autorização de envio.</p>
       <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead><tr><th style={css.th}>Cliente</th><th style={css.th}>Segmento</th><th style={css.th}>Preferência</th></tr></thead>
