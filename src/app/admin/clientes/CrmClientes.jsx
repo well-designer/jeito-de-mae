@@ -34,6 +34,8 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const [pagina,setPagina]=useState(1);
   const [mensagemAtendimento,setMensagemAtendimento]=useState('');
   const [aba,setAba]=useState('clientes');
+  const [publicoCampanha,setPublicoCampanha]=useState('Todos');
+  const [buscaCampanha,setBuscaCampanha]=useState('');
   const [contatos,setContatos]=useState([]);
   const consultaAtual=useRef(0);
   const [statusContato,setStatusContato]=useState('');
@@ -108,6 +110,12 @@ export default function CrmClientes({clientes=[],limite=1000}){
   },[clientes,busca,segmento,ordem,somenteAcompanhamento]);
   const porPagina=15, paginas=Math.max(1,Math.ceil(filtrados.length/porPagina));
   const atual=Math.min(pagina,paginas);
+  // Simulacao visual: autorizacao administrativa nao habilita envio.
+  const publicoElegivel=useMemo(()=>clientes.filter(c=>
+    c.consentimentoPromocional==='autorizado' &&
+    (publicoCampanha==='Todos'||(publicoCampanha==='VIP'?c.vip:c.segmento===publicoCampanha)) &&
+    (!buscaCampanha.trim()||c.nome.toLocaleLowerCase('pt-BR').includes(buscaCampanha.toLocaleLowerCase('pt-BR').trim()))
+  ),[clientes,publicoCampanha,buscaCampanha]);
   const resumo=[
     ['Clientes',clientes.length],['Recorrentes',clientes.filter(c=>c.pedidos>=2).length],
     ['Inativos (30 dias)',clientes.filter(c=>c.diasSemComprar>=30).length],
@@ -120,7 +128,25 @@ export default function CrmClientes({clientes=[],limite=1000}){
     <nav aria-label="Seções do CRM" style={{display:'flex',gap:8,marginBottom:14}}>
       <button style={{...css.button,background:aba==='clientes'?'#b4492b':'#fffdf9',color:aba==='clientes'?'white':'#2b2118'}} onClick={()=>setAba('clientes')}>Clientes</button>
       <button style={{...css.button,background:aba==='relacionamento'?'#b4492b':'#fffdf9',color:aba==='relacionamento'?'white':'#2b2118'}} onClick={()=>setAba('relacionamento')}>Relacionamento</button>
+      <button style={{...css.button,background:aba==='campanhas'?'#b4492b':'#fffdf9',color:aba==='campanhas'?'white':'#2b2118'}} onClick={()=>setAba('campanhas')}>Campanhas (simulação)</button>
     </nav>
+    {aba==='campanhas'&&<section style={css.card}>
+      <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Público de campanhas · simulação</h2>
+      <p>Prévia somente para planejamento. Não cria campanhas, não exporta contatos e não envia mensagens. Autorização administrativa não equivale a opt-in verificável.</p>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14}}>
+        <select aria-label="Público da campanha" value={publicoCampanha} onChange={e=>setPublicoCampanha(e.target.value)} style={css.input}>
+          {SEG.map(x=><option key={x}>{x}</option>)}
+        </select>
+        <input aria-label="Buscar público" placeholder="Buscar pelo nome" value={buscaCampanha} onChange={e=>setBuscaCampanha(e.target.value)} style={css.input}/>
+      </div>
+      <p><strong>{publicoElegivel.length}</strong> cliente(s) com registro administrativo de autorização dentro do filtro selecionado.</p>
+      <p style={{fontSize:13,color:'#756454'}}>Clientes com consentimento revogado, não informado ou indisponível ficam excluídos. A seleção é uma fotografia dos dados carregados e não deve ser usada como autorização de envio.</p>
+      <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}>
+        <thead><tr><th style={css.th}>Cliente</th><th style={css.th}>Segmento</th><th style={css.th}>Preferência</th></tr></thead>
+        <tbody>{publicoElegivel.slice(0,50).map(c=><tr key={c.id}><td style={css.td}>{c.nome}</td><td style={css.td}>{c.segmento}{c.vip?' · VIP':''}</td><td style={css.td}>Registro interno</td></tr>)}</tbody>
+      </table></div>
+      {publicoElegivel.length>50&&<p style={{fontSize:13}}>Exibindo somente os primeiros 50 resultados.</p>}
+    </section>}
     {aba==='relacionamento'&&<section style={css.card}>
       <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Relacionamento · atendimento manual</h2>
       <p>Abra uma conversa de atendimento no WhatsApp com um cliente. O envio depende da confirmação manual no WhatsApp. Esta tela não envia mensagens automaticamente e não registra entrega.</p>
