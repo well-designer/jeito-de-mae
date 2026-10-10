@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import CampanhasRascunhos from './CampanhasRascunhos';
 
 const fmt = n => Number(n || 0).toLocaleString('pt-BR', {style:'currency',currency:'BRL'});
 const dataBR = s => s ? new Date(s).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}) : '—';
@@ -18,7 +19,7 @@ const css = {
 function downloadCsv(rows){
   const csv='\uFEFF'+rows.map(row=>row.map(v=>{
     const valor=String(v??'');
-    const seguro=/^[\\s]*[=+@-]/.test(valor)?"'"+valor:valor;
+    const seguro=/^\s*[=+@-]/.test(valor)?"'"+valor:valor;
     return '"'+seguro.replace(/"/g,'""')+'"';
   }).join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -162,6 +163,7 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <button style={css.button} onClick={conferirPrevia} disabled={consultandoPrevia}>{consultandoPrevia?'Conferindo…':'Conferir preferências no servidor'}</button>
       {previaServidor?.erro&&<p role="alert">{previaServidor.erro}</p>}
       {previaServidor&&!previaServidor.erro&&<p role="status">Conferência atual no Supabase: <strong>{previaServidor.quantidade}</strong> registro(s) autorizados e {previaServidor.excluidos} excluído(s). Apenas simulação, não autoriza envios.</p>}
+      <CampanhasRascunhos/>
       <p style={{fontSize:13,color:'#756454'}}>Clientes com consentimento revogado, não informado ou indisponível ficam excluídos. A seleção é uma fotografia dos dados carregados e não deve ser usada como autorização de envio.</p>
       <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead><tr><th style={css.th}>Cliente</th><th style={css.th}>Segmento</th><th style={css.th}>Preferência</th></tr></thead>
