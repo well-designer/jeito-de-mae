@@ -28,7 +28,7 @@ export async function POST(request) {
   if(erroPedidos)return NextResponse.json({erro:'Não foi possível verificar os vínculos de clientes.'},{status:503});
   const telefonesPorAuth=new Map();
   for(const p of pedidos||[]){
-    const telefone=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\\D/g,'');
+    const telefone=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
     if(!telefone)continue;
     const chave='auth:'+p.auth_user_id;
     if(!telefonesPorAuth.has(chave))telefonesPorAuth.set(chave,new Set());
@@ -47,7 +47,7 @@ export async function POST(request) {
   };
   return NextResponse.json({
     quantidade:unicas.filter(chave => autorizado(chave)).length,
-    excluidos:unicas.filter(chave => !autorizadas.has(chave)).length,
+    excluidos:unicas.filter(chave => !autorizado(chave)).length,
     modo:'simulacao',
     aviso:'Registro administrativo não comprova opt-in. Proibido usar esta prévia como autorização de envio.'
   });
