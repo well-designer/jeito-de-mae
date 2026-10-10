@@ -31,16 +31,19 @@ export default async function ClientesCRM() {
       if (p.status_pagamento === 'pago') c.total += Number(p.total || 0);
     }
   }
-  const lista = [...clientes.values()].sort((a,b) => b.pedidos-a.pedidos || b.ultima.localeCompare(a.ultima));
+  const agora = Date.now();
+  const diasDesde = (data) => Math.max(0, Math.floor((agora - new Date(data).getTime()) / 86400000));
+  const lista = [...clientes.values()].map(c => ({...c, diasSemComprar:diasDesde(c.ultima), segmento:c.pedidos>1 ? (diasDesde(c.ultima)>=30 ? 'Recorrente inativo' : 'Recorrente ativo') : (diasDesde(c.ultima)>=30 ? 'Inativo' : 'Novo')})).sort((a,b) => b.pedidos-a.pedidos || b.ultima.localeCompare(a.ultima));
   return <main style={{maxWidth:1100,margin:'0 auto',padding:'32px 20px',fontFamily:'system-ui,sans-serif'}}>
     <Link href="/admin">← Voltar ao painel</Link>
     <h1>Clientes · CRM</h1>
     <p>Resumo dos até 1.000 pedidos mais recentes. Valores representam pagamentos registrados como pagos, não faturamento contábil.</p>
     {error && <p role="alert">Não foi possível carregar os clientes. Tente novamente.</p>}
-    {!error && <><p><strong>{lista.length}</strong> clientes identificados por telefone · <strong>{lista.filter(c=>c.pedidos>1).length}</strong> recorrentes</p>
+    {!error && <><p><strong>{lista.length}</strong> clientes identificados por telefone · <strong>{lista.filter(c=>c.pedidos>1).length}</strong> recorrentes · <strong>{lista.filter(c=>c.diasSemComprar>=30).length}</strong> sem comprar há 30 dias ou mais</p>
+    <p>Segmentação inicial: ativo = compra nos últimos 29 dias; inativo = 30 dias ou mais. A classificação considera somente os pedidos disponíveis nesta consulta.</p>
     <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}>
-      <thead><tr>{['Cliente','Telefone','Pedidos','Concluídos','Total pago','Última compra'].map(x=><th key={x} style={{padding:12,borderBottom:'1px solid #ddd'}}>{x}</th>)}</tr></thead>
-      <tbody>{lista.map(c=><tr key={c.telefone}><td style={{padding:12,borderBottom:'1px solid #eee'}}>{c.nome}</td><td>{c.telefone}</td><td>{c.pedidos}</td><td>{c.concluidos}</td><td>{dinheiro(c.total)}</td><td>{new Date(c.ultima).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}</td></tr>)}</tbody>
+      <thead><tr>{['Cliente','Telefone','Pedidos','Concluídos','Total pago','Última compra','Segmento'].map(x=><th key={x} style={{padding:12,borderBottom:'1px solid #ddd'}}>{x}</th>)}</tr></thead>
+      <tbody>{lista.map(c=><tr key={c.telefone}><td style={{padding:12,borderBottom:'1px solid #eee'}}>{c.nome}</td><td>{c.telefone}</td><td>{c.pedidos}</td><td>{c.concluidos}</td><td>{dinheiro(c.total)}</td><td>{new Date(c.ultima).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'})}</td><td>{c.segmento}</td></tr>)}</tbody>
     </table></div>{lista.length===0&&<p>Ainda não há clientes com pedidos registrados.</p>}</>}
   </main>;
 }
