@@ -45,11 +45,21 @@ export default async function ClientesCRM() {
     if(!c.ultima||p.criado_em>c.ultima)c.ultima=p.criado_em;
     if(p.status_pagamento==='pago')c.total+=Number(p.total||0);
   }
+  // Consulta somente leitura: usa o saldo oficial, sem recalcular ou movimentar pontos.
+  const sb=supabaseAdmin();
+  const {data:contasFidelidade,error:erroFidelidade}=await sb.from('fidelidade_clientes')
+    .select('id,auth_user_id,telefone,saldo').limit(5000);
+  const porAuth=new Map(),porTelefone=new Map();
+  for(const conta of contasFidelidade||[]){
+    if(conta.auth_user_id)porAuth.set(String(conta.auth_user_id),conta);
+    else if(conta.telefone)porTelefone.set(String(conta.telefone).replace(/\\D/g,''),conta);
+  }
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
-    return {...c,diasSemComprar,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
+    const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
+    return {...c,diasSemComprar,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
       vip:c.pedidos>=10||c.total>=500,
     };
@@ -57,7 +67,8 @@ export default async function ClientesCRM() {
   return <main style={{maxWidth:1200,margin:'0 auto',padding:'24px 16px',background:'#f7f1e8',minHeight:'100vh'}}>
     <Link href="/admin" style={{color:'#a9432a'}}>← Voltar ao painel</Link>
     <h1 style={{fontFamily:'Georgia,serif',color:'#2b2118'}}>Clientes · CRM</h1>
-    <p style={{color:'#756454'}}>Primeira etapa integrada aos pedidos reais. Busca, segmentação, perfil e exportação.</p>
+    <p style={{color:'#756454'}}>Pedidos reais, preferências de consumo e saldo oficial de fidelidade (consulta somente leitura).</p>
+    {erroFidelidade&&<p role="status">O saldo de fidelidade está temporariamente indisponível; os demais dados continuam acessíveis.</p>}
     {error?<p role="alert">Não foi possível consultar os pedidos. Nenhum dado foi alterado.</p>:<CrmClientes clientes={lista} limite={LIMITE}/>}
   </main>;
 }
