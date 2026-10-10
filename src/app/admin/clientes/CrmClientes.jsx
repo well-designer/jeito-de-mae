@@ -136,6 +136,9 @@ export default function CrmClientes({clientes=[],limite=1000}){
     }catch(e){setPreviaServidor({erro:e.message})}
     finally{setConsultandoPrevia(false)}
   };
+  const comprasValidas=clientes.reduce((s,c)=>s+c.pedidos,0);
+  const receitaPaga=clientes.reduce((s,c)=>s+c.total,0);
+  const reativacao=clientes.filter(precisaAcompanhamento);
   const resumo=[
     ['Clientes',clientes.length],['Recorrentes',clientes.filter(c=>c.pedidos>=2).length],
     ['Inativos (30 dias)',clientes.filter(c=>c.diasSemComprar>=30).length],
@@ -149,7 +152,19 @@ export default function CrmClientes({clientes=[],limite=1000}){
       <button style={{...css.button,background:aba==='clientes'?'#b4492b':'#fffdf9',color:aba==='clientes'?'white':'#2b2118'}} onClick={()=>setAba('clientes')}>Clientes</button>
       <button style={{...css.button,background:aba==='relacionamento'?'#b4492b':'#fffdf9',color:aba==='relacionamento'?'white':'#2b2118'}} onClick={()=>setAba('relacionamento')}>Relacionamento</button>
       <button style={{...css.button,background:aba==='campanhas'?'#b4492b':'#fffdf9',color:aba==='campanhas'?'white':'#2b2118'}} onClick={()=>setAba('campanhas')}>Campanhas (simulação)</button>
+      <button style={{...css.button,background:aba==='relatorios'?'#b4492b':'#fffdf9',color:aba==='relatorios'?'white':'#2b2118'}} onClick={()=>setAba('relatorios')}>Relatórios</button>
     </nav>
+    {aba==='relatorios'&&<section style={css.card}>
+      <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Indicadores e oportunidades</h2>
+      <p>Indicadores calculados a partir dos pedidos carregados. Não representam faturamento contábil nem resultados atribuídos a campanhas.</p>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10}}>
+        {[['Compras válidas',comprasValidas],['Valor pago registrado',fmt(receitaPaga)],['Ticket médio pago',fmt(comprasValidas?receitaPaga/comprasValidas:0)],['Clientes com 2+ compras',clientes.filter(c=>c.pedidos>=2).length],['Inativos há 30 dias',clientes.filter(c=>c.diasSemComprar>=30).length],['Acompanhamento sugerido',reativacao.length]].map(([nome,valor])=><div key={nome} style={css.card}><small>{nome}</small><div style={{fontSize:22,fontWeight:700}}>{valor}</div></div>)}
+      </div>
+      <h3>Oportunidades para atendimento manual</h3>
+      <p>Clientes com compra há 30 dias ou mais e sem atendimento registrado nos últimos 14 dias. Não enviar promoção sem consentimento verificável.</p>
+      {reativacao.length===0?<p>Não há sugestões no recorte atual.</p>:<div style={{overflowX:'auto'}}><table style={{width:'100%'}}><thead><tr><th style={css.th}>Cliente</th><th style={css.th}>Dias sem comprar</th><th style={css.th}>Último atendimento</th></tr></thead><tbody>{reativacao.slice(0,30).map(c=><tr key={c.id}><td style={css.td}>{c.nome}</td><td style={css.td}>{c.diasSemComprar}</td><td style={css.td}>{dataBR(c.ultimoContato)}</td></tr>)}</tbody></table></div>}
+      <p style={{fontSize:12,color:'#756454'}}>Automação apenas de identificação: nenhum agendamento, mensagem ou campanha é executado. Métricas limitadas aos {limite.toLocaleString('pt-BR')} pedidos recentes.</p>
+    </section>}
     {aba==='campanhas'&&<section style={css.card}>
       <h2 style={{fontFamily:'Georgia,serif',marginTop:0}}>Público de campanhas · simulação</h2>
       <p>Prévia somente para planejamento. Não cria campanhas, não exporta contatos e não envia mensagens. Autorização administrativa não equivale a opt-in verificável.</p>
