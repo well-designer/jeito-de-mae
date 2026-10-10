@@ -75,13 +75,21 @@ export default async function ClientesCRM() {
     .select('cliente_chave,status').limit(5000);
   const preferenciasPorCliente=new Map((preferencias||[]).map(p=>[p.cliente_chave,p.status]));
   // Se qualquer consulta auxiliar falhar, nao presumir saldo ou consentimento.
+  // A relacao auth/telefone so e confiavel se vier de um pedido autenticado.
+  const revogadosAuth=new Set((preferencias||[]).filter(p=>p.status==='revogado'&&p.cliente_chave.startsWith('auth:')).map(p=>p.cliente_chave));
+  const telefonesRevogadosPorAuth=new Set();
+  for(const p of pedidos){
+    if(!p.auth_user_id||!revogadosAuth.has('auth:'+p.auth_user_id))continue;
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\\D/g,'');
+    if(tel)telefonesRevogadosPorAuth.add('tel:'+tel);
+  }
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
     const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
     const telChave=c.telefone?'tel:'+c.telefone:null;
-    const revogadoVinculado=telChave&&preferenciasPorCliente.get(telChave)==='revogado';
+    const revogadoVinculado=telChave&&(preferenciasPorCliente.get(telChave)==='revogado'||telefonesRevogadosPorAuth.has(telChave));
     const statusDireto=preferenciasPorCliente.get(c.id)||'nao_informado';
     return {...c,diasSemComprar,consentimentoPromocional:erroPreferencias?'indisponivel':(revogadoVinculado?'revogado':statusDireto),ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
