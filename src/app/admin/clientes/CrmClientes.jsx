@@ -37,18 +37,38 @@ export default function CrmClientes({clientes=[],limite=1000}){
   const consultaAtual=useRef(0);
   const [statusContato,setStatusContato]=useState('');
   const [observacao,setObservacao]=useState('');
+  const [consentimento,setConsentimento]=useState('nao_informado');
+  const [notaConsentimento,setNotaConsentimento]=useState('');
+  const [salvandoConsentimento,setSalvandoConsentimento]=useState(false);
   const [salvandoContato,setSalvandoContato]=useState(false);
   const selecionarAtendimento=async id=>{
     const consulta=++consultaAtual.current;
     const cliente=clientes.find(c=>c.id===id)||null;
     setSelecionado(cliente);setMensagemAtendimento('');setContatos([]);setStatusContato('');
+    setConsentimento('nao_informado');setNotaConsentimento('');
     if(!cliente)return;
     try{
       const r=await fetch('/api/admin/crm/contatos?cliente='+encodeURIComponent(cliente.id));
       const d=await r.json();
       if(!r.ok)throw Error(d.erro||'Histórico indisponível');
       if(consulta===consultaAtual.current)setContatos(d.contatos||[]);
+      const rc=await fetch('/api/admin/crm/consentimentos?cliente='+encodeURIComponent(cliente.id));
+      const dc=await rc.json();
+      if(!rc.ok)throw Error(dc.erro||'Preferências indisponíveis');
+      if(consulta===consultaAtual.current){setConsentimento(dc.consentimento?.status||'nao_informado');setNotaConsentimento(dc.consentimento?.observacao||'');}
     }catch(e){if(consulta===consultaAtual.current)setStatusContato(e.message)}
+  };
+  const salvarConsentimento=async()=>{
+    if(!selecionado||salvandoConsentimento)return;
+    setSalvandoConsentimento(true);setStatusContato('');
+    try{
+      const r=await fetch('/api/admin/crm/consentimentos',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cliente_chave:selecionado.id,cliente_nome:selecionado.nome,status:consentimento,observacao:notaConsentimento})});
+      const d=await r.json();
+      if(!r.ok)throw Error(d.erro||'Não foi possível salvar');
+      setStatusContato('Preferência registrada. Nenhuma mensagem foi enviada.');
+    }catch(e){setStatusContato(e.message)}
+    finally{setSalvandoConsentimento(false)}
   };
   const registrarContato=async()=>{
     if(!selecionado||salvandoContato)return;
@@ -108,6 +128,19 @@ export default function CrmClientes({clientes=[],limite=1000}){
         <textarea aria-label="Mensagem de atendimento" style={{...css.input,display:'block',width:'100%',minHeight:100,marginTop:5}} value={mensagemAtendimento} onChange={e=>setMensagemAtendimento(e.target.value)} placeholder="Olá! Aqui é do Jeito de Mãe. Como podemos ajudar?" />
       </label>
       <button style={{...css.button,marginTop:12,background:'#b4492b',color:'white'}} disabled={!selecionado||!telefoneWhatsApp(selecionado)||!mensagemAtendimento.trim()} onClick={()=>abrirWhatsApp(selecionado)}>Abrir conversa no WhatsApp</button>
+      <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
+        <h3>Preferências de mensagens promocionais</h3>
+        <p style={{fontSize:13,color:'#756454'}}>Registre apenas o que o cliente informou. Este registro não é prova independente de autorização. Nenhuma campanha será enviada por esta tela.</p>
+        <label style={{display:'block',marginBottom:8}}>Situação
+          <select style={{...css.input,display:'block',marginTop:5}} value={consentimento} onChange={e=>setConsentimento(e.target.value)}>
+            <option value="nao_informado">Não informado</option><option value="autorizado">Autorizado pelo cliente</option><option value="revogado">Não deseja receber / revogou</option>
+          </select>
+        </label>
+        <textarea aria-label="Registro da preferência" style={{...css.input,width:'100%',minHeight:64}} maxLength={1000}
+          value={notaConsentimento} onChange={e=>setNotaConsentimento(e.target.value)} placeholder="Como e quando o cliente manifestou a preferência?"/>
+        <button style={{...css.button,marginTop:8}} disabled={!selecionado||salvandoConsentimento||(consentimento==='autorizado'&&!notaConsentimento.trim())}
+          onClick={salvarConsentimento}>{salvandoConsentimento?'Salvando…':'Salvar preferência'}</button>
+      </div>
       <div style={{marginTop:24,borderTop:'1px solid #e6dccb',paddingTop:16}}>
         <h3>Histórico de atendimento</h3>
         <p style={{fontSize:13,color:'#756454'}}>Após realizar o atendimento, registre-o manualmente. Abrir o WhatsApp não significa que a mensagem foi enviada.</p>
