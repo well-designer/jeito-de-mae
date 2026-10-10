@@ -74,12 +74,16 @@ export default async function ClientesCRM() {
   const {data:preferencias,error:erroPreferencias}=await sb.from('crm_consentimentos')
     .select('cliente_chave,status').limit(5000);
   const preferenciasPorCliente=new Map((preferencias||[]).map(p=>[p.cliente_chave,p.status]));
+  // Se qualquer consulta auxiliar falhar, nao presumir saldo ou consentimento.
   const agora=Date.now();
   const lista=[...clientes.values()].map(c=>{
     const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
     const inativo=diasSemComprar!==null&&diasSemComprar>=30;
     const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
-    return {...c,diasSemComprar,consentimentoPromocional:erroPreferencias?'indisponivel':(preferenciasPorCliente.get(c.id)||'nao_informado'),ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
+    const telChave=c.telefone?'tel:'+c.telefone:null;
+    const revogadoVinculado=telChave&&preferenciasPorCliente.get(telChave)==='revogado';
+    const statusDireto=preferenciasPorCliente.get(c.id)||'nao_informado';
+    return {...c,diasSemComprar,consentimentoPromocional:erroPreferencias?'indisponivel':(revogadoVinculado?'revogado':statusDireto),ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
       segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
       vip:c.pedidos>=10||c.total>=500,
     };
