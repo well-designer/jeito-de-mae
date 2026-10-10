@@ -13,7 +13,11 @@ export async function GET(request) {
     .select('cliente_chave,cliente_nome,status,origem,observacao,atualizado_em')
     .eq('cliente_chave',chave).maybeSingle();
   if (error) return NextResponse.json({erro:'Preferências indisponíveis.'},{status:503});
-  return NextResponse.json({consentimento:data || {cliente_chave:chave,status:'nao_informado'}});
+  const {data:historico,error:erroHistorico}=await supabaseAdmin().from('crm_consentimentos_historico')
+    .select('id,status_anterior,status_novo,observacao,alterado_em')
+    .eq('cliente_chave',chave).order('alterado_em',{ascending:false}).limit(30);
+  if(erroHistorico)return NextResponse.json({erro:'Auditoria de preferências indisponível.'},{status:503});
+  return NextResponse.json({consentimento:data || {cliente_chave:chave,status:'nao_informado'},historico:historico||[]});
 }
 export async function POST(request) {
   const user = await exigirAdmin();
