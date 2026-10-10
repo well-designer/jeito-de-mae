@@ -19,22 +19,37 @@ export async function POST(request) {
   const unicas = [...new Set(chaves)];
   if (!unicas.length) return NextResponse.json({quantidade:0,excluidos:0,modo:'simulacao'});
   const sb=supabaseAdmin();
-  // Cruzar os identificadores presentes nos pedidos, sem aceitar telefone informado pelo navegador.
+  // Relacoes historicas podem ser ambiguas. Se a consulta ultrapassar o limite,
+  // negar a simulacao em vez de presumir ausencia de revogacao.
   const authIds=unicas.filter(c=>c.startsWith('auth:')).map(c=>c.slice(5));
-  const {data:pedidos,error:erroPedidos}=await sb.from('pedidos')
-    .select('auth_user_id,cliente_telefone_normalizado,cliente_telefone')
-    .in('auth_user_id',authIds.length?authIds:['00000000-0000-0000-0000-000000000000'])
-    .limit(1000);
-  if(erroPedidos)return NextResponse.json({erro:'Não foi possível verificar os vínculos de clientes.'},{status:503});
-  const telefonesPorAuth=new Map();
-  for(const p of pedidos||[]){
-    const telefone=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
-    if(!telefone)continue;
-    const chave='auth:'+p.auth_user_id;
-    if(!telefonesPorAuth.has(chave))telefonesPorAuth.set(chave,new Set());
-    telefonesPorAuth.get(chave).add('tel:'+telefone);
+  const telefones=unicas.filter(c=>c.startsWith('tel:')).map(c=>c.slice(4));
+  const relacoes=[];
+  if(authIds.length){
+    const {data,error}=await sb.from('pedidos')
+      .select('auth_user_id,cliente_telefone_normalizado,cliente_telefone')
+      .in('auth_user_id',authIds).limit(1001);
+    if(error||!data||data.length>1000)return NextResponse.json({erro:'Vínculos de contas incompletos; conferência indisponível.'},{status:503});
+    relacoes.push(...data);
   }
-  const chavesRelacionadas=[...new Set([...unicas,...[...telefonesPorAuth.values()].flatMap(v=>[...v])])];
+  if(telefones.length){
+    const {data,error}=await sb.from('pedidos')
+      .select('auth_user_id,cliente_telefone_normalizado,cliente_telefone')
+      .in('cliente_telefone_normalizado',telefones).limit(1001);
+    if(error||!data||data.length>1000)return NextResponse.json({erro:'Vínculos de telefone incompletos; conferência indisponível.'},{status:503});
+    relacoes.push(...data);
+  }
+  const vinculadas=new Map();
+  const vincular=(a,b)=>{
+    if(!vinculadas.has(a))vinculadas.set(a,new Set());
+    if(!vinculadas.has(b))vinculadas.set(b,new Set());
+    vinculadas.get(a).add(b);vinculadas.get(b).add(a);
+  };
+  for(const p of relacoes){
+    if(!p.auth_user_id)continue;
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\\D/g,'');
+    if(tel)vincular('auth:'+p.auth_user_id,'tel:'+tel);
+  }
+  const chavesRelacionadas=[...new Set([...unicas,...[...vinculadas.values()].flatMap(v=>[...v])])];
   if(chavesRelacionadas.length>2000)return NextResponse.json({erro:'Seleção muito ampla para conferência segura.'},{status:400});
   const {data,error} = await sb.from('crm_consentimentos')
     .select('cliente_chave,status').in('cliente_chave',chavesRelacionadas);
@@ -42,8 +57,8 @@ export async function POST(request) {
   const estados=new Map((data||[]).map(item=>[item.cliente_chave,item.status]));
   const autorizado=chave=>{
     if(estados.get(chave)!=='autorizado')return false;
-    // Revogacao vinculada ao mesmo telefone prevalece sobre autorizacao administrativa.
-    return ![...(telefonesPorAuth.get(chave)||[])].some(t=>estados.get(t)==='revogado');
+    // Uma revogacao em qualquer identificador diretamente vinculado prevalece.
+    return ![...(vinculadas.get(chave)||[])].some(outra=>estados.get(outra)==='revogado');
   };
   return NextResponse.json({
     quantidade:unicas.filter(chave => autorizado(chave)).length,
