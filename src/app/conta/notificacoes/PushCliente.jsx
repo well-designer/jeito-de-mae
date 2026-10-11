@@ -16,10 +16,11 @@ export default function PushCliente(){
    const permissao=await Notification.requestPermission();
    if(permissao!=='granted')throw Error('Permissão não concedida no aparelho.');
    const reg=await navigator.serviceWorker.register('/sw.js');
-   const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(publicKey)});
+   const existente=await reg.pushManager.getSubscription();
+   const sub=existente||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(publicKey)});
    const session=await sessao();
    const r=await fetch('/api/conta/push',{method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({subscription:sub.toJSON()})});
-   const d=await r.json();if(!r.ok)throw Error(d.erro||'Falha ao cadastrar aparelho.');
+   const d=await r.json();if(!r.ok){if(!existente)await sub.unsubscribe().catch(()=>{});throw Error(d.erro||'Falha ao cadastrar aparelho.')}
    setStatus('Aparelho cadastrado. O envio de campanhas push ainda está desativado.');
   }catch(e){setStatus(e.message||'Não foi possível cadastrar.')}finally{setBusy(false)}
  }
@@ -44,6 +45,7 @@ export default function PushCliente(){
  <button type="button" disabled={busy||!suportado} onClick={desativar} style={{padding:10}}>Remover este aparelho</button>
  </div>
  {!publicKey&&<p style={{fontSize:13}}>Aguardando configuração da chave pública VAPID.</p>}
+ <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
  {status&&<p role="status">{status}</p>}
  </section>;
 }
