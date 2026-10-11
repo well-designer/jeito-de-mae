@@ -29,15 +29,18 @@ export async function POST(request) {
   if (!user) return NextResponse.json({erro:'Entre na sua conta para alterar a preferência.'},{status:401});
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({erro:'Dados inválidos.'},{status:400}); }
-  // Endpoint exclusivo para descadastro: nunca concede autorização.
-  if (body?.acao !== 'revogar') return NextResponse.json({erro:'Operação não permitida.'},{status:400});
+  // Consentimento novo e explicito, com finalidade/canal registrados.
+  if (!['revogar','autorizar_push'].includes(body?.acao)) return NextResponse.json({erro:'Operação não permitida.'},{status:400});
+  if(body.acao==='autorizar_push' && body.confirmacao!==true)
+    return NextResponse.json({erro:'Confirme explicitamente a autorização.'},{status:400});
   const chave = 'auth:'+user.id;
   const nome = String(user.user_metadata?.nome||user.user_metadata?.name||user.email||'Cliente').slice(0,120);
+  const autorizar=body.acao==='autorizar_push';
   const {data,error} = await supabaseAdmin().from('crm_consentimentos').upsert({
-    cliente_chave:chave,cliente_nome:nome,status:'revogado',
-    origem:'cliente_autenticado',observacao:'Descadastro solicitado pelo próprio cliente na conta.',
+    cliente_chave:chave,cliente_nome:nome,status:autorizar?'autorizado':'revogado',
+    origem:'cliente_autenticado',observacao:autorizar?'Opt-in expresso do cliente autenticado para ofertas via push, marcado voluntariamente na pagina de notificacoes.':'Descadastro solicitado pelo próprio cliente na conta.',
     atualizado_por:user.id,atualizado_em:new Date().toISOString()
   },{onConflict:'cliente_chave'}).select('status,atualizado_em').single();
   if (error) return NextResponse.json({erro:'Não foi possível registrar o descadastro.'},{status:503});
-  return NextResponse.json({status:data.status,atualizado_em:data.atualizado_em});
+  return NextResponse.json({status:data.status,atualizado_em:data.atualizado_em,canal:autorizar?'push':null,envio_ativo:false});
 }
