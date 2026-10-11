@@ -50,7 +50,19 @@ export async function POST(request) {
     const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
     if(tel)vincular('auth:'+p.auth_user_id,'tel:'+tel);
   }
-  const chavesRelacionadas=[...new Set([...unicas,...[...vinculadas.values()].flatMap(v=>[...v])])];
+  // Percorrer todos os vinculos conectados: a revogacao de um telefone
+  // deve prevalecer mesmo se houver mais de uma conta historicamente ligada.
+  const grupoDe=chave=>{
+    const visitados=new Set([chave]),fila=[chave];
+    while(fila.length){
+      const atual=fila.pop();
+      for(const vizinho of vinculadas.get(atual)||[]){
+        if(!visitados.has(vizinho)){visitados.add(vizinho);fila.push(vizinho);}
+      }
+    }
+    return visitados;
+  };
+  const chavesRelacionadas=[...new Set(unicas.flatMap(chave=>[...grupoDe(chave)]))];
   if(chavesRelacionadas.length>2000)return NextResponse.json({erro:'Seleção muito ampla para conferência segura.'},{status:400});
   const {data,error} = await sb.from('crm_consentimentos')
     .select('cliente_chave,status').in('cliente_chave',chavesRelacionadas);
@@ -58,8 +70,8 @@ export async function POST(request) {
   const estados=new Map((data||[]).map(item=>[item.cliente_chave,item.status]));
   const autorizado=chave=>{
     if(estados.get(chave)!=='autorizado')return false;
-    // Uma revogacao em qualquer identificador diretamente vinculado prevalece.
-    return ![...(vinculadas.get(chave)||[])].some(outra=>estados.get(outra)==='revogado');
+    // Uma revogacao em qualquer identificador conectado prevalece.
+    return ![...grupoDe(chave)].some(outra=>estados.get(outra)==='revogado');
   };
   return NextResponse.json({
     quantidade:unicas.filter(chave => autorizado(chave)).length,
