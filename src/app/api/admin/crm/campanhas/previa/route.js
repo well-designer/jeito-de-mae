@@ -21,8 +21,9 @@ export async function POST(request) {
   const sb=supabaseAdmin();
   // Relacoes historicas podem ser ambiguas. Se a consulta ultrapassar o limite,
   // negar a simulacao em vez de presumir ausencia de revogacao.
-  const authIds=unicas.filter(c=>c.startsWith('auth:')).map(c=>c.slice(5));
-  const telefones=unicas.filter(c=>c.startsWith('tel:')).map(c=>c.slice(4));
+  const authIds=unicas.filter(c=>/^auth:[0-9a-f-]{36}$/i.test(c)).map(c=>c.slice(5));
+  const telefones=unicas.filter(c=>/^tel:\d{10,13}$/.test(c)).map(c=>c.slice(4));
+  if(unicas.some(c=>!/^auth:[0-9a-f-]{36}$/i.test(c)&&!/^tel:\d{10,13}$/.test(c)))return NextResponse.json({erro:'Identificador de cliente inválido.'},{status:400});
   const relacoes=[];
   if(authIds.length){
     const {data,error}=await sb.from('pedidos')
