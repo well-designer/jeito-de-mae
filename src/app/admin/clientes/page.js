@@ -80,7 +80,7 @@ export default async function ClientesCRM() {
   const telefonesRevogadosPorAuth=new Set();
   for(const p of pedidos){
     if(!p.auth_user_id||!revogadosAuth.has('auth:'+p.auth_user_id))continue;
-    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\\D/g,'');
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
     if(tel)telefonesRevogadosPorAuth.add('tel:'+tel);
   }
   const agora=Date.now();
