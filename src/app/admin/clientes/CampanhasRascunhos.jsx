@@ -9,14 +9,23 @@ export default function CampanhasRascunhos(){
  const r=await fetch('/api/admin/crm/campanhas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({titulo,mensagem,segmento})});
  const d=await r.json();if(!r.ok)throw Error(d.erro||'Erro ao salvar');setLista(a=>[d.campanha,...a]);setTitulo('');setMensagem('');setAviso('Rascunho salvo. Nenhuma mensagem enviada.');
  }catch(e){setAviso(e.message)}finally{setSalvando(false)}}
+ async function alterar(id,status){
+ setAviso('');
+ try{
+  const r=await fetch('/api/admin/crm/campanhas',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status})});
+  const d=await r.json();if(!r.ok)throw Error(d.erro||'Falha ao atualizar');
+  setLista(a=>a.map(c=>c.id===id?d.campanha:c));
+  setAviso(status==='publicada'?'Publicado na página inicial, sem envio de notificações.':'Situação atualizada.');
+ }catch(e){setAviso(e.message)}
+ }
  return <section style={{marginTop:20,padding:16,background:'#fffdf9',border:'1px solid #e6dccb',borderRadius:10}}>
- <h3 style={{marginTop:0}}>Planejamento de campanhas</h3><p>Salve mensagens para revisar depois. Sem agendamento, disparo ou exportação de destinatários.</p>
+ <h3 style={{marginTop:0}}>Planejamento de campanhas</h3><p>Salve mensagens para revisar depois. Campanhas do público Todos podem ser exibidas na página inicial. Sem disparos push, WhatsApp ou e-mail.</p>
  <form onSubmit={salvar} style={{display:'grid',gap:10}}>
  <label>Título<input style={estilo} required minLength={3} maxLength={120} value={titulo} onChange={e=>setTitulo(e.target.value)}/></label>
  <label>Público<select style={estilo} value={segmento} onChange={e=>setSegmento(e.target.value)}>{seg.map(x=><option key={x}>{x}</option>)}</select></label>
  <label>Mensagem<textarea style={estilo} rows={4} required maxLength={2000} value={mensagem} onChange={e=>setMensagem(e.target.value)}/></label>
  <button type="submit" disabled={salvando} style={{...estilo,width:'auto',cursor:'pointer'}}>{salvando?'Salvando…':'Salvar rascunho'}</button>
  </form>{aviso&&<p role="status">{aviso}</p>}
- <h4>Rascunhos salvos ({lista.length})</h4>{lista.length===0?<p>Nenhum rascunho salvo.</p>:<div style={{display:'grid',gap:10}}>{lista.map(c=><article key={c.id} style={{borderTop:'1px solid #eee6db',paddingTop:8}}><strong>{c.titulo}</strong> · {c.segmento}<p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{c.mensagem}</p><small>Rascunho · {new Date(c.criado_em).toLocaleDateString('pt-BR')}</small></article>)}</div>}
+ <h4>Rascunhos salvos ({lista.length})</h4>{lista.length===0?<p>Nenhum rascunho salvo.</p>:<div style={{display:'grid',gap:10}}>{lista.map(c=><article key={c.id} style={{borderTop:'1px solid #eee6db',paddingTop:8}}><strong>{c.titulo}</strong> · {c.segmento}<p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{c.mensagem}</p><small>{c.status} · {new Date(c.criado_em).toLocaleDateString('pt-BR')}</small><div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap'}}>{c.segmento==='Todos'&&c.status!=='publicada'&&<button type="button" onClick={()=>alterar(c.id,'publicada')}>Publicar no app</button>}{c.status!=='arquivada'&&<button type="button" onClick={()=>alterar(c.id,'arquivada')}>Arquivar</button>}{c.status==='publicada'&&<button type="button" onClick={()=>alterar(c.id,'rascunho')}>Retirar do app</button>}</div></article>)}</div>}
  </section>;
 }
