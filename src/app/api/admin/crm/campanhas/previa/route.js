@@ -46,7 +46,7 @@ export async function POST(request) {
   };
   for(const p of relacoes){
     if(!p.auth_user_id)continue;
-    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\\D/g,'');
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
     if(tel)vincular('auth:'+p.auth_user_id,'tel:'+tel);
   }
   const chavesRelacionadas=[...new Set([...unicas,...[...vinculadas.values()].flatMap(v=>[...v])])];
