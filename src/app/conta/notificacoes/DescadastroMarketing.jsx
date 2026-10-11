@@ -50,7 +50,7 @@ export default function DescadastroMarketing(){
     <p style={{fontSize:14}}>Você decide se quer receber ofertas por notificações push. A autorização é opcional e pode ser retirada a qualquer momento. Avisos essenciais dos pedidos não são afetados.</p>
     <p style={{fontSize:14}}>Situação: <strong>{({carregando:'Consultando…',sem_login:'Entre na sua conta',erro:'Indisponível',autorizado:'Autorizado (registro interno)',revogado:'Descadastrado',nao_informado:'Não informado'})[estado]||'Não informado'}</strong></p>
     {(estado==='nao_informado'||estado==='revogado')&&<div style={{margin:'12px 0'}}><p style={{fontSize:13}}>Ao tocar em autorizar, você concorda em receber novidades e ofertas da Jeito de Mãe por notificações no celular. Você poderá cancelar aqui quando quiser. A permissão do aparelho é solicitada separadamente.</p><button type="button" disabled={salvando} onClick={autorizar} style={{padding:12,borderRadius:8}}>{salvando?'Salvando…':'Quero receber ofertas por push'}</button></div>}
-    {estado!=='revogado'&&estado!=='carregando'&&estado!=='sem_login'&&estado!=='erro'&&
+    {estado==='autorizado'&&
       <button type="button" onClick={revogar} disabled={salvando} style={{padding:12,border:'1px solid #b4492b',borderRadius:8,background:'white',color:'#8c301c',cursor:'pointer'}}>{salvando?'Salvando…':'Não quero receber promoções'}</button>}
     {estado==='sem_login'&&<p>Faça login para registrar o descadastro na sua conta.</p>}
     {mensagem&&<p role="status">{mensagem}</p>}
