@@ -19,3 +19,18 @@ export async function POST(request){
  if(error)return NextResponse.json({erro:'Não foi possível salvar o rascunho.'},{status:503});
  return NextResponse.json({campanha:data,modo:'rascunho_sem_envio'},{status:201});
 }
+
+export async function PATCH(request){
+ const user=await exigirAdmin();
+ if(!user)return NextResponse.json({erro:'Acesso restrito.'},{status:403});
+ let body;try{body=await request.json()}catch{return NextResponse.json({erro:'Dados inválidos.'},{status:400})}
+ const id=String(body?.id||''),status=String(body?.status||'');
+ if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)||!['rascunho','publicada','arquivada'].includes(status))
+   return NextResponse.json({erro:'Alteração inválida.'},{status:400});
+ const {data,error}=await supabaseAdmin().from('crm_campanhas')
+  .update({status,atualizado_em:new Date().toISOString()}).eq('id',id)
+  .select('id,titulo,mensagem,segmento,status,criado_em').maybeSingle();
+ if(error)return NextResponse.json({erro:'Não foi possível atualizar a campanha.'},{status:503});
+ if(!data)return NextResponse.json({erro:'Campanha não encontrada.'},{status:404});
+ return NextResponse.json({campanha:data,modo:'publicacao_interna_sem_push'});
+}
