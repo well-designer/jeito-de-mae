@@ -3,6 +3,7 @@ import { exigirOperacao } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { statusPedidoSchema } from '@/lib/validation';
 import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
+import { notificarClienteStatus } from '@/lib/notificarClienteStatus';
 
 export const dynamic = 'force-dynamic';
 
