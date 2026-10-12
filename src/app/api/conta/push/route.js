@@ -26,12 +26,12 @@ export async function POST(request){
   return NextResponse.json({erro:'Inscrição inválida.'},{status:400});
  // A inscricao no aparelho nao constitui autorizacao promocional.
  const sb=supabaseAdmin();
- const {data:existente,error:erroBusca}=await sb.from('crm_push_clientes').select('auth_user_id').eq('endpoint',endpoint).maybeSingle();
+ const {data:existente,error:erroBusca}=await sb.from('crm_push_clientes').select('auth_user_id,promocional').eq('endpoint',endpoint).maybeSingle();
  if(erroBusca)return NextResponse.json({erro:'Inscrição indisponível.'},{status:503});
  if(existente&&existente.auth_user_id!==user.id)return NextResponse.json({erro:'Este aparelho já está associado a outra conta.'},{status:409});
- const {error}=await sb.from('crm_push_clientes').upsert({auth_user_id:user.id,endpoint,p256dh,auth,promocional:false,atualizado_em:new Date().toISOString()},{onConflict:'endpoint'});
+ const {error}=await sb.from('crm_push_clientes').upsert({auth_user_id:user.id,endpoint,p256dh,auth,promocional:existente?.promocional===true,atualizado_em:new Date().toISOString()},{onConflict:'endpoint'});
  if(error)return NextResponse.json({erro:'Não foi possível salvar a inscrição.'},{status:503});
- return NextResponse.json({ok:true,promocional:false,envio_ativo:false});
+ return NextResponse.json({ok:true,promocional:existente?.promocional===true,envio_ativo:false});
 }
 export async function DELETE(request){
  const user=await usuario(request);
