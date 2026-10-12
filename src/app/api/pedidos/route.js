@@ -265,7 +265,7 @@ if (
       ? produto.dias_semana
       : [];
 
-    if (!diasProduto.includes(diaAtual)) {
+    if (diasProduto.length > 0 && !diasProduto.includes(diaAtual)) {
       return NextResponse.json(
         {
           erro: `${produto.nome} nao esta disponivel no cardapio de hoje.`,
