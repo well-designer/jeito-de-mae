@@ -67,7 +67,7 @@ export default function CheckoutV15({
           <div className="checkout-payments">
             {[['pix','PIX','Pagamento rápido'],['credito','Cartão','Crédito'],['dinheiro','Dinheiro','Pague na entrega']].map(([id,titulo,sub]) => (
               <button type="button" key={id} className={form.pagamento === id ? 'active' : ''} onClick={() => setForm({ ...form, pagamento: id })}>
-                <i>{id === 'pix' ? '◆' : id === 'credito' ? '▭' : '$'}</i><span><b>{titulo}</b><small>{sub}</small></span><em>{form.pagamento === id ? '✓' : ''}</em>
+                <i aria-hidden="true">{id === 'pix' ? <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m12 2 5 5-5 5-5-5 5-5Zm0 10 5 5-5 5-5-5 5-5ZM2 12l5-5 5 5-5 5-5-5Zm10 0 5-5 5 5-5 5-5-5Z"/></svg> : id === 'credito' ? <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h5"/></svg> : <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 9h2m10 6h2"/></svg>}</i><span><b>{titulo}</b><small>{sub}</small></span><em>{form.pagamento === id ? '✓' : ''}</em>
               </button>
             ))}
           </div>
