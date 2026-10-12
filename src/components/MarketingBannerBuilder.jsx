@@ -10,11 +10,11 @@ const modelos={
 
 export default function MarketingBannerBuilder(){
  const router=useRouter();
- const [aberto,setAberto]=useState(false); const [tipo,setTipo]=useState('prato'); const [salvando,setSalvando]=useState(false); const [aviso,setAviso]=useState(''); const [brief,setBrief]=useState('');
+ const [gerando,setGerando]=useState(false); const [aberto,setAberto]=useState(false); const [tipo,setTipo]=useState('prato'); const [salvando,setSalvando]=useState(false); const [aviso,setAviso]=useState(''); const [brief,setBrief]=useState('');
  const [form,setForm]=useState({...modelos.prato,link:'/',inicio:'',fim:'',prioridade:'1',imagem:''});
  const atualizar=(k,v)=>setForm(x=>({...x,[k]:v}));
  const aplicarModelo=(v)=>{setTipo(v);setForm(x=>({...x,...modelos[v]}));};
- const sugerir=()=>{const q=brief.toLowerCase();let chave=tipo;if(q.includes('feijoada'))chave='feijoada';else if(q.includes('fidel')||q.includes('ponto'))chave='fidelidade';else chave='prato';setTipo(chave);setForm(x=>({...x,...modelos[chave]}));setAviso('Sugestão preparada para revisão. A geração por IA será ativada quando o provedor estiver conectado.')};
+ const sugerir=async()=>{setGerando(true);setAviso('Gerando campanha com IA...');try{const r=await fetch('/api/admin/marketing/gerar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})});const j=await r.json();if(!r.ok)throw new Error(j.erro||'Não foi possível gerar a campanha');setForm(x=>({...x,...j.campanha}));setAviso('Sugestão gerada! Revise os dados e a prévia antes de salvar.');}catch(e){setAviso(e.message)}finally{setGerando(false)}};
  const preview=useMemo(()=>form,[form]);
  const salvar=async()=>{setSalvando(true);setAviso('');try{const r=await fetch('/api/admin/banners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)throw new Error(j.erro||'Não foi possível salvar');setAviso('Rascunho salvo.');router.refresh();}catch(e){setAviso(e.message)}finally{setSalvando(false)}};
  if(!aberto) return <button className="marketing-builder-open" type="button" onClick={()=>setAberto(true)}>+ Criar novo banner</button>;
@@ -22,7 +22,7 @@ export default function MarketingBannerBuilder(){
    <div className="banner-builder-head"><div><span>EDITOR DE BANNER</span><h2>Nova campanha</h2><p>Monte a campanha e confira a prévia antes de publicar.</p></div><button type="button" onClick={()=>setAberto(false)}>Fechar</button></div>
    <div className="banner-builder-grid">
     <div className="banner-form">
-      <div className="ai-brief-box"><span>✦ ASSISTENTE DE CAMPANHA</span><p>Descreva o que você quer divulgar. Ex.: “Quero divulgar a feijoada de quarta”.</p><div><input value={brief} onChange={e=>setBrief(e.target.value)} placeholder="O que vamos divulgar?"/><button type="button" onClick={sugerir} disabled={!brief.trim()}>Gerar sugestão</button></div></div><label>Objetivo<select value={tipo} onChange={e=>aplicarModelo(e.target.value)}><option value="prato">Prato do dia</option><option value="feijoada">Feijoada</option><option value="fidelidade">Fidelidade</option></select></label>
+      <div className="ai-brief-box"><span>ASSISTENTE DE CAMPANHA COM IA</span><p>Descreva o que você quer divulgar. Ex.: “Quero divulgar a feijoada de quarta”.</p><div><input value={brief} onChange={e=>setBrief(e.target.value)} placeholder="O que vamos divulgar?"/><button type="button" onClick={sugerir} disabled={!brief.trim()||gerando}>{gerando?'Gerando...':'Gerar sugestão'}</button></div></div><label>Objetivo<select value={tipo} onChange={e=>aplicarModelo(e.target.value)}><option value="prato">Prato do dia</option><option value="feijoada">Feijoada</option><option value="fidelidade">Fidelidade</option></select></label>
       <label>Chamada curta<input value={form.kicker} onChange={e=>atualizar('kicker',e.target.value)} maxLength={45}/></label>
       <label>Título<input value={form.titulo} onChange={e=>atualizar('titulo',e.target.value)} maxLength={90}/></label>
       <label>Texto<textarea value={form.texto} onChange={e=>atualizar('texto',e.target.value)} maxLength={180}/></label>
