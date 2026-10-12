@@ -868,9 +868,12 @@ if (!erroInsert) {
     });
   }
 
-  // Pix e cartao continuam abaixo utilizando o MESMO
-  // pedido.id. Assim a chave de idempotencia enviada
-  // ao Mercado Pago tambem continua sendo a mesma.
+  // Uma requisicao simultanea ja registrou este checkout.
+  // Nao inicie outra cobranca: o primeiro processamento pode estar em andamento.
+  return NextResponse.json({
+    erro: 'Este pedido ja foi registrado e o pagamento pode estar sendo processado. Consulte Meus pedidos antes de tentar novamente.',
+    pedidoId: pedido.id,
+  }, { status: 409 });
 } else {
   console.error(
     '[pedidos] insert:',
