@@ -1,10 +1,15 @@
 'use client';
+import {useState} from 'react';
 
 export function PixV15({ pix, total }) {
+  const [mensagemCopia,setMensagemCopia]=useState('');
   async function copiar() {
+    const codigo=pix?.qrCode||'';
+    if(!codigo){setMensagemCopia('Código Pix indisponível.');return;}
     try {
-      await navigator.clipboard.writeText(pix?.qrCode || '');
-    } catch {}
+      await navigator.clipboard.writeText(codigo);
+      setMensagemCopia('Código Pix copiado!');
+    } catch {setMensagemCopia('Não foi possível copiar automaticamente. Selecione o código acima para copiar.');}
   }
 
   return (
@@ -16,7 +21,7 @@ export function PixV15({ pix, total }) {
         <p>Escaneie o QR Code ou copie o código Pix para concluir seu pagamento.</p>
         {total && <div className="payment-total"><small>Total do pedido</small><strong>{total}</strong></div>}
         {pix?.qrCodeBase64 && <div className="pix-qr"><img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Code Pix"/></div>}
-        <div className="pix-code"><textarea readOnly value={pix?.qrCode || ''}/><button type="button" onClick={copiar}>Copiar código Pix</button></div>
+        <div className="pix-code"><textarea readOnly aria-label="Código Pix copia e cola" onFocus={e=>e.target.select()} value={pix?.qrCode || ''}/><button type="button" onClick={copiar}>Copiar código Pix</button>{mensagemCopia&&<small role="status">{mensagemCopia}</small>}</div>
         <div className="payment-wait"><span></span><div><b>Aguardando pagamento</b><small>Assim que o Pix for confirmado, atualizaremos esta tela automaticamente.</small></div></div>
       </div>
     </div>
