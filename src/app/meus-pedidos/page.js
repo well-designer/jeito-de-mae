@@ -10,7 +10,7 @@ import './pedidos.css';
 const statusInfo = (p) => {
   if (p.status === 'cancelado') return ['Cancelado', 'Pedido cancelado'];
   if (p.status === 'concluido') return [p.tipo === 'retirada' ? 'Retirado' : 'Entregue', 'Pedido finalizado'];
-  if (p.status === 'saiu_entrega') return [p.tipo === 'retirada' ? 'Pronto para retirada' : 'Saiu para entrega', p.tipo === 'retirada' ? 'Já pode vir buscar' : 'Seu pedido está a caminho'];
+  if (['saiu_entrega','entrega','pronto_retirada'].includes(p.status)) return [p.tipo === 'retirada' ? 'Pronto para retirada' : 'Saiu para entrega', p.tipo === 'retirada' ? 'Já pode vir buscar' : 'Seu pedido está a caminho'];
   if (p.status === 'preparo') return ['Em preparo', 'A cozinha está preparando seu pedido'];
   if (p.status === 'confirmado') return ['Confirmado', 'Seu pedido foi confirmado'];
   return ['Pedido recebido', 'Aguardando confirmação da loja'];
@@ -24,13 +24,13 @@ export default function MeusPedidos() {
 
   useEffect(() => {
     let ativo = true;
-    (async () => {
+    const carregar = async () => {
       try {
         const { data } = await supabaseBrowser().auth.getSession();
         const session = data.session;
         if (!ativo) return;
         setLogado(!!session);
-        if (!session) return;
+        if (!session) { if(ativo)setCarregando(false); return; }
         const r = await fetch('/api/minha-conta/pedidos', {
           cache: 'no-store',
           headers: { Authorization: 'Bearer ' + session.access_token },
@@ -43,8 +43,10 @@ export default function MeusPedidos() {
       } finally {
         if (ativo) setCarregando(false);
       }
-    })();
-    return () => { ativo = false; };
+    };
+    carregar();
+    const intervalo = setInterval(carregar, 15000);
+    return () => { ativo = false; clearInterval(intervalo); };
   }, []);
 
   return <><main className="orders-page">
