@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {useEffect,useState} from 'react';
 const icons={
  home:<><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z"/><path d="M9 21v-8h6v8"/></>,
- menu:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="M6 3v18"/></>,
+ menu:<><path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V3Z"/><path d="M5 5H3v14a2 2 0 0 0 2 2h2M9 8h6M9 12h6M9 16h4"/><path d="M17 3v18"/></>,
  orders:<><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 9h6m-6 4h6"/></>,
  profile:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>
 };
