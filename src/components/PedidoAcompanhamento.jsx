@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const ORDEM = ['novo', 'confirmado', 'preparo', 'saiu_entrega', 'concluido'];
-function normalizar(status){const s=String(status||'').toLowerCase();if(['novo','pendente','recebido'].includes(s))return'novo';if(['confirmado','aceito'].includes(s))return'confirmado';if(['preparo','preparando','em_preparo'].includes(s))return'preparo';if(['saiu_entrega','saiu_para_entrega','entrega'].includes(s))return'saiu_entrega';if(['concluido','entregue','finalizado'].includes(s))return'concluido';if(s==='cancelado')return'cancelado';return'novo'}
+function normalizar(status){const s=String(status||'').toLowerCase();if(['novo','pendente','recebido'].includes(s))return'novo';if(['confirmado','aceito'].includes(s))return'confirmado';if(['preparo','preparando','em_preparo'].includes(s))return'preparo';if(['saiu_entrega','saiu_para_entrega','entrega','pronto_retirada'].includes(s))return'saiu_entrega';if(['concluido','entregue','finalizado'].includes(s))return'concluido';if(s==='cancelado')return'cancelado';return'novo'}
 
 export default function PedidoAcompanhamento({pedidoInicial}){
  const[pedido,setPedido]=useState(pedidoInicial),[atualizadoEm,setAtualizadoEm]=useState(new Date());
