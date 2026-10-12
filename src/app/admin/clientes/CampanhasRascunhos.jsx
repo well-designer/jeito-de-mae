@@ -49,10 +49,10 @@ export default function CampanhasRascunhos(){
  return <section style={{marginTop:20,padding:16,background:'#fffdf9',border:'1px solid #e6dccb',borderRadius:10}}>
  <h3 style={{marginTop:0}}>Planejamento de campanhas</h3>{diagnostico&&<p role="status" style={{fontSize:13}}>Push: {diagnostico.aparelhos_cadastrados} aparelhos cadastrados · {diagnostico.consentimentos_autorizados} autorizações registradas · chaves VAPID {diagnostico.vapid_publica&&diagnostico.vapid_privada?'configuradas':'pendentes'} · envios com confirmação e limite de 25 aparelhos.</p>}<p>Salve mensagens para revisar depois. Campanhas do público Todos podem ser exibidas no app ou enviadas uma única vez por notificação push aos clientes autorizados. O envio tem limite inicial de 25 aparelhos. WhatsApp e e-mail não são disparados.</p>
  <form onSubmit={salvar} style={{display:'grid',gap:10}}>
- <label>Título<input style={estilo} required minLength={3} maxLength={120} value={titulo} onChange={e=>{setTitulo(e.target.value);setPrevia(null);setRevisao(false)}}/></label>
- <label>Público<select style={estilo} value={segmento} onChange={e=>{setSegmento(e.target.value);setPrevia(null);setRevisao(false)}}>{seg.map(x=><option key={x}>{x}</option>)}</select></label>
+ <label>Título<input style={estilo} required minLength={3} maxLength={120} value={titulo} onChange={e=>{setTitulo(e.target.value);setPrevia(null)}}/></label>
+ <label>Público<select style={estilo} value={segmento} onChange={e=>{setSegmento(e.target.value);setPrevia(null)}}>{seg.map(x=><option key={x}>{x}</option>)}</select></label>
  <div><button type="button" onClick={consultarPrevia} disabled={carregandoPrevia}>{carregandoPrevia?'Consultando…':'Ver prévia de destinatários'}</button>{previa&&<p role="status">{previa.clientes_aptos} clientes aptos · {previa.aparelhos_com_opt_in} aparelhos autorizados. Nenhuma notificação será enviada.</p>}</div>
- <label>Mensagem<textarea style={estilo} rows={4} required maxLength={2000} value={mensagem} onChange={e=>{setMensagem(e.target.value);setPrevia(null);setRevisao(false)}}/></label>
+ <label>Mensagem<textarea style={estilo} rows={4} required maxLength={2000} value={mensagem} onChange={e=>{setMensagem(e.target.value);setPrevia(null)}}/></label>
  {previa?.clientes_aptos===1&&previa?.aparelhos_com_opt_in===1&&segmento==='Todos'&&<button type="button" disabled={enviandoTeste||salvando} onClick={enviarTeste} style={{padding:12,border:'1px solid #d9cdbb',borderRadius:8}}>{enviandoTeste?'Enviando teste…':'Enviar teste individual (1 aparelho)'}</button>}
  <button type="submit" disabled={salvando} style={{...estilo,width:'auto',cursor:'pointer'}}>{salvando?'Salvando…':'Salvar rascunho'}</button>
  </form>{aviso&&<p role="status">{aviso}</p>}
