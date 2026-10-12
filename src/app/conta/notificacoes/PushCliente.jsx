@@ -4,16 +4,19 @@ import {supabaseBrowser} from '@/lib/supabaseBrowser';
 
 function bytes(base64){const s=atob((base64+'='.repeat((4-base64.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 export default function PushCliente(){
- const [status,setStatus]=useState(''),[busy,setBusy]=useState(false),[inscricoes,setInscricoes]=useState(null),[endpointAtual,setEndpointAtual]=useState('');
+ const [status,setStatus]=useState(''),[busy,setBusy]=useState(false),[inscricoes,setInscricoes]=useState(null),[endpointAtual,setEndpointAtual]=useState(''),[diagnostico,setDiagnostico]=useState('');
  const suportado=typeof window!=='undefined'&&'serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;
  async function sessao(){const {data:{session}}=await supabaseBrowser().auth.getSession();if(!session)throw Error('Entre na sua conta antes de continuar.');return session}
  async function listar(){
   setBusy(true);setStatus('');
   try{
    const session=await sessao();
-   const reg=typeof navigator!=='undefined'&&'serviceWorker'in navigator?await navigator.serviceWorker.getRegistration('/sw.js'):null;
+   const temSW=typeof navigator!=='undefined'&&'serviceWorker'in navigator;
+   const registros=temSW?await navigator.serviceWorker.getRegistrations():[];
+   const reg=registros.find(x=>x.scope===location.origin+'/')||registros[0]||null;
    const sub=reg?.pushManager?await reg.pushManager.getSubscription():null;
    const endpoint=sub?.endpoint||'';
+   setDiagnostico('Instalado: '+(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone?'sim':'não')+' · Permissão: '+(typeof Notification!=='undefined'?Notification.permission:'indisponível')+' · Service workers: '+registros.length+' · Inscrição ativa: '+(endpoint?'sim':'não'));
    const r=await fetch('/api/conta/push?endpoint='+encodeURIComponent(endpoint),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
    const d=await r.json();if(!r.ok)throw Error(d.erro||'Falha ao consultar inscrições.');
    setEndpointAtual(endpoint);setInscricoes(d.inscricoes||[]);
@@ -91,6 +94,7 @@ export default function PushCliente(){
  </div>
  <div style={{marginTop:12}}><button type="button" disabled={busy} onClick={listar}>Ver aparelhos cadastrados</button>{inscricoes&&<div style={{marginTop:10}}><strong>{inscricoes.length} inscrição(ões) nesta conta</strong>{!endpointAtual&&<p>Não foi possível identificar este aplicativo: nenhuma inscrição push ativa foi encontrada neste navegador. As inscrições abaixo não foram verificadas.</p>}{inscricoes.map((item,i)=><div key={item.id} style={{padding:'10px 0',borderBottom:'1px solid #e5ded4'}}><span>Inscrição {i+1} · {new Date(item.criado_em).toLocaleDateString('pt-BR')} · {item.atual?'Este aplicativo (confirmado)':endpointAtual?'Inscrição diferente da atual':'Não identificada neste navegador'}</span>{!item.atual&&endpointAtual&&inscricoes.some(x=>x.atual)&&<button type="button" disabled={busy} onClick={()=>removerAntigo(item.id)} style={{marginLeft:8}}>Remover inscrição antiga</button>}</div>)}</div>}</div>
  <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
+ {diagnostico&&<p style={{fontSize:12}} role="status">Diagnóstico: {diagnostico}</p>}
  {status&&<p role="status">{status}</p>}
  </section>;
 }
