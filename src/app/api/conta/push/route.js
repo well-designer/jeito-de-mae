@@ -12,9 +12,9 @@ async function usuario(request){
 export async function GET(request){
  const user=await usuario(request);
  if(!user)return NextResponse.json({erro:'Faça login.'},{status:401});
- const {data,error}=await supabaseAdmin().from('crm_push_clientes').select('id,criado_em,promocional').eq('auth_user_id',user.id).limit(20);
+ const {data,error}=await supabaseAdmin().from('crm_push_clientes').select('id,endpoint,criado_em,promocional').eq('auth_user_id',user.id).order('criado_em',{ascending:false}).limit(20);
  if(error)return NextResponse.json({erro:'Inscrições indisponíveis.'},{status:503});
- return NextResponse.json({inscricoes:data||[],envio_promocional_ativo:false});
+ return NextResponse.json({inscricoes:(data||[]).map(({endpoint,...item})=>({...item,atual:!!endpoint&&endpoint===new URL(request.url).searchParams.get('endpoint')})),envio_promocional_ativo:false});
 }
 export async function POST(request){
  const user=await usuario(request);
@@ -41,5 +41,25 @@ export async function DELETE(request){
  if(!endpoint||endpoint.length>2048)return NextResponse.json({erro:'Inscrição inválida.'},{status:400});
  const {error}=await supabaseAdmin().from('crm_push_clientes').delete().eq('auth_user_id',user.id).eq('endpoint',endpoint);
  if(error)return NextResponse.json({erro:'Não foi possível cancelar.'},{status:503});
+ return NextResponse.json({ok:true});
+}
+
+export async function PATCH(request){
+ const user=await usuario(request);
+ if(!user)return NextResponse.json({erro:'Faça login.'},{status:401});
+ let body;try{body=await request.json()}catch{return NextResponse.json({erro:'Dados inválidos.'},{status:400})}
+ const id=String(body?.id||'');
+ if(!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id))return NextResponse.json({erro:'Cadastro inválido.'},{status:400});
+ const sb=supabaseAdmin();
+ const {data:registro,error:erro}=await sb.from('crm_push_clientes').select('id,endpoint').eq('id',id).eq('auth_user_id',user.id).maybeSingle();
+ if(erro)return NextResponse.json({erro:'Não foi possível verificar o cadastro.'},{status:503});
+ if(!registro)return NextResponse.json({erro:'Cadastro não encontrado.'},{status:404});
+ const atual=String(body?.endpoint_atual||'');
+ if(!atual.startsWith('https://')||atual.length>2048)return NextResponse.json({erro:'Confirme o aparelho atual antes de remover um cadastro antigo.'},{status:400});
+ if(registro.endpoint===atual)return NextResponse.json({erro:'Este é o aparelho atual. Use Remover este aparelho para cancelar suas notificações.'},{status:409});
+ const {data:ativo,error:erroAtivo}=await sb.from('crm_push_clientes').select('id').eq('endpoint',atual).eq('auth_user_id',user.id).maybeSingle();
+ if(erroAtivo||!ativo)return NextResponse.json({erro:'O aparelho atual não está cadastrado. Nenhum registro foi removido.'},{status:409});
+ const {error:erroDelete}=await sb.from('crm_push_clientes').delete().eq('id',id).eq('auth_user_id',user.id);
+ if(erroDelete)return NextResponse.json({erro:'Não foi possível remover o cadastro antigo.'},{status:503});
  return NextResponse.json({ok:true});
 }
