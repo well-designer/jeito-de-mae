@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createDecipheriv, createHash, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -8,6 +9,13 @@ export const revalidate = 0;
 export async function GET(request) {
   const id = request.nextUrl.searchParams.get('id');
   const token = request.nextUrl.searchParams.get('token');
+  const authorization = request.headers.get('authorization') || '';
+  let userId = null;
+  if (authorization.startsWith('Bearer ')) {
+    const verifier = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+    const {data:{user}}=await verifier.auth.getUser(authorization.slice(7));
+    userId=user?.id||null;
+  }
 
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
     return NextResponse.json(
@@ -24,7 +32,7 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin()
       .from('pedidos')
-.select('codigo, status, status_pagamento, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash, entrega_codigo_cliente_cifrado')
+.select('codigo, status, status_pagamento, auth_user_id, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash, entrega_codigo_cliente_cifrado')
       .eq('id', id)
       .maybeSingle();
 
@@ -54,6 +62,13 @@ export async function GET(request) {
       );
     }
 
+    let tokenValido = false;
+    if(token && data.acompanhamento_token_hash){
+      const recebido=createHash('sha256').update(token).digest();
+      const esperado=Buffer.from(data.acompanhamento_token_hash,'hex');
+      tokenValido=recebido.length===esperado.length && timingSafeEqual(recebido,esperado);
+    }
+    if(!tokenValido && (!userId || data.auth_user_id!==userId))return NextResponse.json({erro:'Acesso não autorizado ao pedido.'},{status:403,headers:{'Cache-Control':'no-store'}});
     let codigo_entrega = null;
     if (token && data.acompanhamento_token_hash && data.entrega_codigo_necessario) {
       const recebido = Buffer.from(createHash('sha256').update(token).digest('hex'), 'hex');
