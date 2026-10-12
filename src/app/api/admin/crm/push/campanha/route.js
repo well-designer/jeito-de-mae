@@ -28,6 +28,8 @@ export async function POST(request){
  const targets=devices.filter(d=>allowed.has(d.auth_user_id)&&d.endpoint&&d.p256dh&&d.auth);
  if(!targets.length)return NextResponse.json({erro:'Não há aparelhos com autorização válida.'},{status:422});
  if(!process.env.VAPID_PUBLIC_KEY||!process.env.VAPID_PRIVATE_KEY)return NextResponse.json({erro:'Notificações não configuradas.'},{status:503});
+ const {error:reservationError}=await sb.from('crm_push_envios').insert({campanha_id:id,criado_por:admin.id});
+ if(reservationError)return NextResponse.json({erro:'Esta campanha já teve um envio registrado ou não pôde ser reservada. Nenhum reenvio permitido.'},{status:409});
  // Reserva atômica antes de enviar: uma campanha só pode ser consumida uma vez.
  const {data:claimed,error:claimError}=await sb.from('crm_campanhas').update({status:'arquivada',atualizado_em:new Date().toISOString()}).eq('id',id).eq('status','rascunho').select('id');
  if(claimError)return NextResponse.json({erro:'Não foi possível reservar a campanha.'},{status:503});
@@ -41,6 +43,7 @@ export async function POST(request){
   try{await webpush.sendNotification({endpoint:d.endpoint,keys:{p256dh:d.p256dh,auth:d.auth}},JSON.stringify({title:titulo,body:mensagem,url:'/',tag:'crm-campanha-'+id}),{TTL:3600});aceitos++}
   catch(e){falhas++;console.error('[crm-campanha]',JSON.stringify({campanha_id:id,dispositivo_id:d.id,codigo:e?.statusCode||null}));}
  }
+ await sb.from('crm_push_envios').update({aceitos,falhas,finalizado_em:new Date().toISOString()}).eq('campanha_id',id);
  console.info('[crm-campanha]',JSON.stringify({campanha_id:id,admin_id:admin.id,aceitos,falhas,revogados,concluido_em:new Date().toISOString()}));
  return NextResponse.json({ok:true,aceitos,falhas,revogados,observacao:'Campanha encerrada, sem reenvio. Aceite do serviço não garante recebimento.'});
 }
