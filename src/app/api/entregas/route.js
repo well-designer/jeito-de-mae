@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { exigirEntregador } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
+import { notificarClienteStatus } from '@/lib/notificarClienteStatus';
 export const dynamic='force-dynamic';
 
 export async function GET(){
@@ -46,6 +47,7 @@ export async function PATCH(request){
  const {data,error}=await query.select().maybeSingle();
  if(error)return NextResponse.json({erro:'falha ao atualizar entrega'},{status:500});
  if(!data)return NextResponse.json({erro:'Esta entrega ja foi assumida ou alterada. Atualize a lista e tente novamente.'},{status:409});
+ if(acao==='entregue') await notificarClienteStatus(data);
  if(acao==='entregue') await processarFidelidadePedido(sb,data).catch(e=>console.error('[fidelidade] entrega:',e));
  return NextResponse.json({pedido:data});
 }
