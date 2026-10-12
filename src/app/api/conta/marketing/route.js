@@ -21,7 +21,11 @@ export async function GET(request) {
   const {data,error} = await supabaseAdmin().from('crm_consentimentos')
     .select('status,atualizado_em').eq('cliente_chave','auth:'+user.id).maybeSingle();
   if (error) return NextResponse.json({erro:'Preferência indisponível.'},{status:503});
-  return NextResponse.json({status:data?.status||'nao_informado',atualizado_em:data?.atualizado_em||null});
+  // O registro global sozinho não autoriza envio push: exigimos também opt-in por aparelho.
+  const {data:devices,error:devicesError}=await supabaseAdmin().from('crm_push_clientes').select('id,promocional').eq('auth_user_id',user.id);
+  if(devicesError)return NextResponse.json({erro:'Preferência push indisponível.'},{status:503});
+  const autorizado=data?.status==='autorizado'&&devices?.some(d=>d.promocional===true);
+  return NextResponse.json({status:autorizado?'autorizado':data?.status==='revogado'?'revogado':'nao_informado',atualizado_em:data?.atualizado_em||null});
 }
 
 export async function POST(request) {
@@ -42,5 +46,10 @@ export async function POST(request) {
     atualizado_por:user.id,atualizado_em:new Date().toISOString()
   },{onConflict:'cliente_chave'}).select('status,atualizado_em').single();
   if (error) return NextResponse.json({erro:'Não foi possível registrar o descadastro.'},{status:503});
+  // Inscrição push e consentimento são independentes. Só aparelhos do próprio usuário
+  // recebem o sinal de opt-in; revogação desliga todos imediatamente.
+  const {error:erroAparelhos}=await supabaseAdmin().from('crm_push_clientes')
+    .update({promocional:autorizar,atualizado_em:new Date().toISOString()}).eq('auth_user_id',user.id);
+  if(erroAparelhos)return NextResponse.json({erro:'Preferência registrada, mas não foi possível atualizar os aparelhos. Os envios continuam bloqueados até a reconciliação.'},{status:503});
   return NextResponse.json({status:data.status,atualizado_em:data.atualizado_em,canal:autorizar?'push':null,envio_ativo:false});
 }
