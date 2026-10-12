@@ -36,7 +36,7 @@ export default function Loja({config,produtos,banners=[]}){
  <style>{'@keyframes jmBannerFade {from {opacity:.25;transform:translateY(5px)} to {opacity:1;transform:translateY(0)}} @media (prefers-reduced-motion: reduce){.smart-banner{animation:none!important}}'}</style>
  <PromoCampaign banners={banners} produtos={visiveis}/>
  <header className="store-head app-store-head">
-   <div className="app-welcome-bar"><span className="app-welcome-dot">✦</span><div><small>BEM-VINDO AO JEITO DE MÃE</small><strong>Comida de casa, com muito carinho.</strong></div><Link href="/conta" aria-label="Meu perfil" className="app-welcome-avatar">♡</Link></div>
+   <div className="app-welcome-bar"><span className="app-welcome-dot"><img src="/jeito%20de%20m%C3%A3e_app.png" alt="Jeito de Mãe" width="40" height="40"/></span><div><small>BEM-VINDO AO JEITO DE MÃE</small><strong>Comida de casa, com muito carinho.</strong></div><Link href="/conta" aria-label="Meu perfil" className="app-welcome-avatar">♡</Link></div>
    <Link href="/conta/endereco" className="store-address" aria-label="Ver ou alterar endereço de entrega"><span className="store-pin">⌖</span><span><small>Entregar em</small><b>{enderecoSalvo||"Informe seu endereço"}</b></span><i>›</i></Link>
    <div className="store-banner" style={config.banner_url?{backgroundImage:`linear-gradient(180deg,rgba(45,8,12,.18),rgba(45,8,12,.48)),url("${config.banner_url}")`}:undefined}></div>
    <div className="store-hero">
@@ -51,12 +51,12 @@ export default function Loja({config,produtos,banners=[]}){
      <div className="smart-banner-art" aria-hidden="true"><span>JM</span></div>
    </div>}
    <div className="home-benefits">
-     <article><span className="benefit-icon">✦</span><div><b>Fidelidade</b><small>Em breve, seus pedidos vão valer pontos.</small></div><span className="benefit-soon">Em breve</span></article>
+     <article><span className="benefit-icon"><img src="/jeito%20de%20m%C3%A3e_app.png" alt="" width="30" height="30"/></span><div><b>Fidelidade</b><small>Em breve, seus pedidos vão valer pontos.</small></div><span className="benefit-soon">Em breve</span></article>
      <article><span className="benefit-icon">♡</span><div><b>Feito com carinho</b><small>Pratos preparados com sabor de comida caseira.</small></div></article>
    </div>
  </section>
  {!aberto&&<div className="wrap"><div className="closed-banner"><b>Loja fechada no momento.</b> Você pode consultar o cardápio e voltar no horário de atendimento.</div></div>}
- <div className="app-menu-heading"><span>ESCOLHA SEU FAVORITO</span><h2>Nosso cardápio <span>✦</span></h2><p>Receitas especiais para deixar seu dia mais gostoso.</p></div><div id="cardapio" className="store-tabs"><a className="active" href="#cardapio" aria-current="page">Cardápio</a><Link href="/meus-pedidos">Meus pedidos</Link></div>
+ <div className="app-menu-heading"><span>ESCOLHA SEU FAVORITO</span><h2>Nosso cardápio</h2><p>Receitas especiais para deixar seu dia mais gostoso.</p></div><div id="cardapio" className="store-tabs"><a className="active" href="#cardapio" aria-current="page">Cardápio</a><Link href="/meus-pedidos">Meus pedidos</Link></div>
  <div className="store-search"><span>⌕</span><input aria-label="Buscar no cardápio" placeholder="Buscar no cardápio" value={busca} onChange={e=>setBusca(e.target.value)}/></div>
  <nav className="cats"><div className="cats-in wrap">{catsDisponiveis.map(c=><button key={c} className={`cat ${catAtiva===c?'active':''}`} onClick={()=>setCatAtiva(c)}>{c}</button>)}</div></nav>
  <main className="wrap">{cats.map(cat=><section key={cat} className={`menu-section menu-${cat.toLowerCase().replaceAll(' ','-')}`}><div className="menu-section-head"><h2 className="sec">{TITULOS_CATEGORIA[cat]||cat}</h2><p>{SUBTITULOS_CATEGORIA[cat]||''}</p></div><div className="grid">{filtrados.filter(p=>p.categoria===cat).map(p=><button className="card" key={p.id} onClick={()=>abrirProduto(p)}><div className="card-body">{p.destaque&&<span className="tag">{p.categoria==='Prato do dia'?'Hoje':'Destaque'}</span>}<h3>{p.nome}</h3><p>{p.descricao}</p><div className="card-foot"><div className="price">{Array.isArray(p.opcoes)&&p.opcoes.length>1?`A partir de ${brl(menorPreco(p))}`:brl(menorPreco(p))}</div><span className="card-add" aria-hidden="true">+</span></div></div><div className={`thumb card-photo ${p.foto_url?'has-photo':'no-photo'} ${p.categoria==='Prato do dia'?'today-photo':''}`}><Foto p={p}/>{p.destaque&&<span className="photo-badge">Destaque</span>}</div></button>)}</div></section>)}{!filtrados.length&&<div className="empty">{busca?'Nenhum item encontrado.':'Nenhum item disponível para hoje.'}</div>}</main>
