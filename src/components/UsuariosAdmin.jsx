@@ -1,0 +1,9 @@
+'use client';
+import { useEffect, useState } from 'react';
+const OPCOES=[['proprietario','Proprietário'],['atendente','Atendente'],['cozinha','Cozinha'],['entregador','Entregador'],['sem_acesso','Sem acesso']];
+export default function UsuariosAdmin(){
+ const [usuarios,setUsuarios]=useState([]),[erro,setErro]=useState(''),[salvando,setSalvando]=useState('');
+ useEffect(()=>{fetch('/api/admin/usuarios',{cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.erro);setUsuarios(d.usuarios||[])}).catch(e=>setErro(e.message||'Falha ao carregar'))},[]);
+ async function mudar(id,papel){setSalvando(id);setErro('');const r=await fetch('/api/admin/usuarios',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,papel})});const d=await r.json();setSalvando('');if(!r.ok)return setErro(d.erro||'Falha ao salvar');setUsuarios(xs=>xs.map(x=>x.id===id?{...x,papel:d.perfil.papel}:x));}
+ return <section><h2>Usuários e permissões</h2><p style={{color:'var(--muted)'}}>Defina o acesso de cada pessoa da equipe.</p>{erro&&<div className="alert err">{erro}</div>}<div style={{display:'grid',gap:10}}>{usuarios.map(u=><div key={u.id} style={{padding:14,border:'1px solid var(--line)',borderRadius:14,display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}><div style={{flex:'1 1 220px'}}><b>{u.email||'Usuário'}</b><br/><small style={{color:'var(--muted)'}}>{u.ultimo_acesso?'Último acesso registrado':'Ainda sem acesso registrado'}</small></div><select className="inp" style={{width:'auto',minWidth:160}} value={u.papel} disabled={salvando===u.id} onChange={e=>mudar(u.id,e.target.value)}>{OPCOES.map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></div>)}</div></section>;
+}

@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
-import { exigirAdmin } from '@/lib/supabaseServer';
+import { exigirOperacao } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { statusPedidoSchema } from '@/lib/validation';
+import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
+import { notificarClienteStatus } from '@/lib/notificarClienteStatus';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!(await exigirAdmin())) {
+  const usuario = await exigirOperacao();
+  if (!usuario) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
@@ -25,7 +28,8 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
-  if (!(await exigirAdmin())) {
+  const usuario = await exigirOperacao();
+  if (!usuario) {
     return NextResponse.json(
       { erro: 'nao autorizado' },
       { status: 401 }
@@ -44,6 +48,109 @@ export async function PATCH(request) {
   }
 
   const { id, ...patch } = parsed.data;
+
+  const sb = supabaseAdmin();
+
+  const { data: atual, error: erroAtual } = await sb
+    .from('pedidos')
+    .select('id,status,status_pagamento,tipo,pagamento,acompanhamento_token_hash,entrega_codigo_necessario')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (erroAtual) {
+    console.error('Erro ao consultar pedido:', erroAtual);
+    return NextResponse.json(
+      { erro: 'falha ao consultar pedido' },
+      { status: 500 }
+    );
+  }
+
+  if (!atual) {
+    return NextResponse.json(
+      { erro: 'pedido nao encontrado' },
+      { status: 404 }
+    );
+  }
+
+  if (
+    patch.status_pagamento &&
+    patch.status_pagamento !== atual.status_pagamento
+  ) {
+    const recebimentoDinheiro =
+      atual.pagamento === 'dinheiro' &&
+      patch.status_pagamento === 'pago' &&
+      patch.status === 'concluido';
+
+    if (!recebimentoDinheiro) {
+      return NextResponse.json(
+        {
+          erro:
+            atual.pagamento === 'dinheiro'
+              ? 'o pagamento em dinheiro so pode ser confirmado ao concluir o pedido'
+              : 'pagamentos eletronicos so podem ser confirmados pelo provedor de pagamento',
+        },
+        { status: 409 }
+      );
+    }
+  }
+
+  if (usuario.papel === 'atendente' && patch.status === 'preparo') {
+    return NextResponse.json(
+      { erro: 'o inicio do preparo deve ser feito pela cozinha ou proprietario' },
+      { status: 403 }
+    );
+  }
+
+  if (usuario.papel === 'cozinha' && patch.status === 'cancelado') {
+    return NextResponse.json(
+      { erro: 'a cozinha nao possui permissao para cancelar pedidos' },
+      { status: 403 }
+    );
+  }
+
+  if (patch.status && patch.status !== atual.status) {
+    const transicoes = {
+      novo: ['confirmado', 'cancelado'],
+      confirmado: ['preparo', 'cancelado'],
+      preparo: atual.tipo === 'retirada'
+        ? ['pronto_retirada', 'cancelado']
+        : ['entrega', 'cancelado'],
+      entrega: ['concluido', 'cancelado'],
+      pronto_retirada: ['concluido', 'cancelado'],
+      concluido: [],
+      cancelado: [],
+    };
+
+    if (!(transicoes[atual.status] || []).includes(patch.status)) {
+      return NextResponse.json(
+        { erro: `transicao invalida: ${atual.status} -> ${patch.status}` },
+        { status: 409 }
+      );
+    }
+
+    if (
+      ['confirmado', 'preparo', 'entrega', 'pronto_retirada', 'concluido'].includes(patch.status) &&
+      atual.pagamento !== 'dinheiro' &&
+      atual.status_pagamento !== 'pago'
+    ) {
+      return NextResponse.json(
+        { erro: 'aguarde a confirmacao do pagamento antes de avancar o pedido' },
+        { status: 409 }
+      );
+    }
+  }
+
+  if (patch.entrega_codigo_necessario === true && !atual.entrega_codigo_necessario) {
+    if (atual.tipo !== 'entrega' || ['concluido','cancelado'].includes(atual.status)) {
+      return NextResponse.json({ erro: 'nao e possivel exigir codigo neste pedido' }, { status: 409 });
+    }
+    // Pedidos antigos, sem token privado criado no checkout, não podem receber
+    // confirmação sob demanda sem expor um segredo ao entregador/admin.
+    if (!atual.acompanhamento_token_hash) {
+      return NextResponse.json({ erro: 'este pedido foi criado antes do acompanhamento seguro e nao aceita codigo sob demanda' }, { status: 409 });
+    }
+    return NextResponse.json({ erro: 'ative o codigo pelo acompanhamento privado do cliente' }, { status: 409 });
+  }
 
   /*
    * Registra automaticamente o horario
@@ -68,14 +175,21 @@ export async function PATCH(request) {
 
   if (patch.status === 'concluido') {
     patch.concluido_em = agora;
+
+    // Dinheiro e recebido presencialmente na entrega/retirada.
+    // Ao concluir o pedido, o backend confirma o recebimento automaticamente.
+    if (atual.pagamento === 'dinheiro') {
+      patch.status_pagamento = 'pago';
+    }
   }
 
-  const { data, error } = await supabaseAdmin()
+  const { data, error } = await sb
     .from('pedidos')
     .update(patch)
     .eq('id', id)
+    .eq('status', atual.status)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -88,6 +202,14 @@ export async function PATCH(request) {
       { status: 500 }
     );
   }
+
+  if (!data) return NextResponse.json({ erro: 'Este pedido foi alterado por outro operador. Atualize a lista antes de continuar.' }, { status: 409 });
+
+  if (patch.status && patch.status !== atual.status) await notificarClienteStatus(data);
+
+  await processarFidelidadePedido(supabaseAdmin(), data).catch((erro) => {
+    console.error('[fidelidade] processar pedido:', erro);
+  });
 
   return NextResponse.json({
     pedido: data,

@@ -1,0 +1,120 @@
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { exigirAdmin } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import CrmClientes from './CrmClientes';
+
+export const dynamic = 'force-dynamic';
+const LIMITE = 10000;
+const LOTE = 1000;
+
+export default async function ClientesCRM() {
+  const usuario = await exigirAdmin();
+  if (!usuario) redirect('/login');
+
+  const sb=supabaseAdmin();
+  const pedidos=[];
+  let error=null;
+  let limiteAtingido=false;
+  for(let inicio=0;inicio<LIMITE;inicio+=LOTE){
+    const {data, error:erroLote}=await sb.from('pedidos')
+      .select('id,auth_user_id,cliente_nome,cliente_telefone_normalizado,cliente_telefone,criado_em,total,status,status_pagamento,itens')
+      .order('criado_em',{ascending:false}).order('id',{ascending:false})
+      .range(inicio,inicio+LOTE-1);
+    if(erroLote){error=erroLote;break;}
+    pedidos.push(...(data||[]));
+    if((data||[]).length<LOTE)break;
+    if(inicio+LOTE===LIMITE)limiteAtingido=true;
+  }
+
+  const extrairItens = itens => (Array.isArray(itens) ? itens : Array.isArray(itens?.itens) ? itens.itens : []).map(item => ({
+    nome: String(item?.nome || item?.name || item?.produto_nome || '').trim(),
+    quantidade: Number(item?.quantidade ?? item?.qtd ?? item?.qty ?? 1),
+  })).filter(item => item.nome && Number.isFinite(item.quantidade) && item.quantidade > 0);
+  const clientes = new Map();
+  for (const p of pedidos || []) {
+    const telefone=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
+    // Nao unir historicos de usuarios autenticados diferentes so por telefone.
+    const id=p.auth_user_id?'auth:'+p.auth_user_id:telefone?'tel:'+telefone:null;
+    if(!id)continue;
+    if(!clientes.has(id))clientes.set(id,{
+      id,telefone,nome:p.cliente_nome||'Cliente',pedidos:0,total:0,ultima:null,primeira:null,historico:[],produtos:{},diasSemana:[0,0,0,0,0,0,0],
+    });
+    const c=clientes.get(id);
+    c.historico.push({
+      id:p.id,criado_em:p.criado_em,total:p.total,status:p.status,
+      status_pagamento:p.status_pagamento,itens:p.itens,
+    });
+    // Apenas pedidos concluidos ou com pagamento confirmado contam como compra.
+    const valido=p.status!=='cancelado'&&(p.status==='concluido'||p.status_pagamento==='pago');
+    if(!valido)continue;
+    c.pedidos++;
+    if(!c.primeira || p.criado_em < c.primeira)c.primeira=p.criado_em;
+    const diaSemana=new Intl.DateTimeFormat('en-US',{weekday:'short',timeZone:'America/Sao_Paulo'}).format(new Date(p.criado_em));
+    const indice={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[diaSemana];
+    if(indice!==undefined)c.diasSemana[indice]++;
+    for(const item of extrairItens(p.itens))c.produtos[item.nome]=(c.produtos[item.nome]||0)+item.quantidade;
+    if(!c.ultima||p.criado_em>c.ultima)c.ultima=p.criado_em;
+    if(p.status_pagamento==='pago')c.total+=Number(p.total||0);
+  }
+  // Consulta somente leitura: usa o saldo oficial, sem recalcular ou movimentar pontos.
+  const {data:contasFidelidade,error:erroFidelidade}=await sb.from('fidelidade_clientes')
+    .select('id,auth_user_id,telefone,saldo').limit(5000);
+  const porAuth=new Map(),porTelefone=new Map();
+  for(const conta of contasFidelidade||[]){
+    if(conta.auth_user_id)porAuth.set(String(conta.auth_user_id),conta);
+    else if(conta.telefone)porTelefone.set(String(conta.telefone).replace(/\D/g,''),conta);
+  }
+  const {data:historicoContatos,error:erroContatos}=await sb.from('crm_contatos')
+    .select('cliente_chave,criado_em').order('criado_em',{ascending:false}).limit(5000);
+  const ultimoContato=new Map();
+  for(const contato of historicoContatos||[]){
+    if(!ultimoContato.has(contato.cliente_chave))ultimoContato.set(contato.cliente_chave,contato.criado_em);
+  }
+  const {data:preferencias,error:erroPreferencias}=await sb.from('crm_consentimentos')
+    .select('cliente_chave,status').limit(5000);
+  const preferenciasPorCliente=new Map((preferencias||[]).map(p=>[p.cliente_chave,p.status]));
+  // Se qualquer consulta auxiliar falhar, nao presumir saldo ou consentimento.
+  // A relacao auth/telefone so e confiavel se vier de um pedido autenticado.
+  const revogadosAuth=new Set((preferencias||[]).filter(p=>p.status==='revogado'&&p.cliente_chave.startsWith('auth:')).map(p=>p.cliente_chave));
+  const telefonesRevogadosPorAuth=new Set();
+  for(const p of pedidos){
+    if(!p.auth_user_id||!revogadosAuth.has('auth:'+p.auth_user_id))continue;
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
+    if(tel)telefonesRevogadosPorAuth.add('tel:'+tel);
+  }
+  const chavesRevogadas=new Set((preferencias||[]).filter(p=>p.status==='revogado').map(p=>p.cliente_chave));
+  const contasPorTelefone=new Map();
+  for(const p of pedidos){
+    if(!p.auth_user_id)continue;
+    const tel=String(p.cliente_telefone_normalizado||p.cliente_telefone||'').replace(/\D/g,'');
+    if(!tel)continue;
+    const chave='tel:'+tel;
+    if(!contasPorTelefone.has(chave))contasPorTelefone.set(chave,new Set());
+    contasPorTelefone.get(chave).add('auth:'+p.auth_user_id);
+  }
+  const agora=Date.now();
+  const lista=[...clientes.values()].map(c=>{
+    const diasSemComprar=c.ultima?Math.max(0,Math.floor((agora-new Date(c.ultima).getTime())/86400000)):null;
+    const inativo=diasSemComprar!==null&&diasSemComprar>=30;
+    const conta=c.id.startsWith('auth:')?porAuth.get(c.id.slice(5)):porTelefone.get(c.telefone);
+    const telChave=c.telefone?'tel:'+c.telefone:null;
+    const revogadoVinculado=telChave&&(chavesRevogadas.has(telChave)||telefonesRevogadosPorAuth.has(telChave));
+    const revogadoContaVinculada=telChave&&[...(contasPorTelefone.get(telChave)||[])].some(chave=>chavesRevogadas.has(chave));
+    const statusDireto=preferenciasPorCliente.get(c.id)||'nao_informado';
+    return {...c,diasSemComprar,consentimentoPromocional:erroPreferencias?'indisponivel':((revogadoVinculado||revogadoContaVinculada)?'revogado':statusDireto),ultimoContato:ultimoContato.get(c.id)||null,pontosDisponiveis:conta?Number(conta.saldo||0):null,produtosFavoritos:Object.entries(c.produtos).sort((a,b)=>b[1]-a[1]).slice(0,5),
+      segmento:c.pedidos===0?'Sem compra válida':inativo?(c.pedidos>=2?'Recorrente inativo':'Inativo'):(c.pedidos>=2?'Recorrente ativo':'Novo'),
+      vip:c.pedidos>=10||c.total>=500,
+    };
+  });
+  return <main style={{maxWidth:1200,margin:'0 auto',padding:'24px 16px',background:'#f7f1e8',minHeight:'100vh'}}>
+    <Link href="/admin" style={{color:'#a9432a'}}>← Voltar ao painel</Link>
+    <h1 style={{fontFamily:'Georgia,serif',color:'#2b2118'}}>Clientes · CRM</h1>
+    <p style={{color:'#756454'}}>Pedidos reais, preferências de consumo e saldo oficial de fidelidade (consulta somente leitura).</p>
+    {erroFidelidade&&<p role="status">O saldo de fidelidade está temporariamente indisponível; os demais dados continuam acessíveis.</p>}
+    {erroContatos&&<p role="status">Indicadores de contatos indisponíveis temporariamente.</p>}
+    {erroPreferencias&&<p role="alert">Preferências promocionais indisponíveis; nenhuma autorização deve ser presumida.</p>}
+    {limiteAtingido&&<p role="alert">O histórico ultrapassou o limite de {LIMITE.toLocaleString('pt-BR')} pedidos; indicadores podem estar incompletos.</p>}
+    {error?<p role="alert">Não foi possível consultar os pedidos. Nenhum dado foi alterado.</p>:<CrmClientes clientes={lista} limite={LIMITE}/>}
+  </main>;
+}

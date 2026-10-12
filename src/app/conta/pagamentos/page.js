@@ -1,0 +1,8 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import CustomerBottomNav from '@/components/CustomerBottomNav';
+import '../../loja-v15.css';
+const KEY='jm_pagamento_preferido';
+const methods=[{id:'pix',icon:'◆',title:'Pix',desc:'Pagamento rápido e seguro'},{id:'credito',icon:'▣',title:'Cartão de crédito',desc:'Pague online pelo site'},{id:'dinheiro',icon:'R$',title:'Dinheiro',desc:'Pague na entrega'}];
+export default function Pagamentos(){const[pref,setPref]=useState('pix'),[ok,setOk]=useState(false);useEffect(()=>{try{setPref(localStorage.getItem(KEY)||'pix')}catch{}},[]);function salvar(id){setPref(id);try{localStorage.setItem(KEY,id)}catch{}setOk(true);setTimeout(()=>setOk(false),1800)}return <><main className="customer-subpage payment-page"><header className="customer-subhead"><Link href="/conta">‹</Link><div><h1>Pagamentos</h1><p>Escolha como prefere pagar seus pedidos</p></div></header><section className="payment-security"><span>✓</span><div><b>Pagamento seguro</b><small>Você escolhe a forma de pagamento antes de confirmar o pedido.</small></div></section><h2>Formas de pagamento</h2><section className="payment-methods">{methods.map(m=><button key={m.id} className={`payment-method ${pref===m.id?'selected':''}`} onClick={()=>salvar(m.id)}><span className="payment-icon">{m.icon}</span><span><b>{m.title}</b><small>{m.desc}</small></span><i>{pref===m.id?'✓':'›'}</i></button>)}</section><section className="payment-info"><b>Como funciona?</b><p>No Pix, o código de pagamento é gerado ao finalizar o pedido. No cartão, o pagamento é processado online. Se escolher dinheiro, você paga no recebimento.</p></section>{ok&&<div className="payment-toast">Preferência salva ✓</div>}</main><CustomerBottomNav/></>}

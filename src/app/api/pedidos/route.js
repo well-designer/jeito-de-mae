@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { createCipheriv, createHash, randomBytes, randomInt } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pedidoSchema, soDigitos } from '@/lib/validation';
 import { limitar, ipDe } from '@/lib/rateLimit';
@@ -6,6 +8,7 @@ import { criarPagamentoPix, criarPagamentoCartao } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
 import { gerarCodigo } from '@/lib/format';
 import { enviarPushNovoPedido } from '@/lib/push';
+import { prepararCreditoFidelidade } from '@/lib/fidelidade';
 
 
 export const runtime = 'nodejs';
@@ -48,35 +51,33 @@ function diaAtualSaoPaulo() {
  * O fuso e definido explicitamente porque o servidor da Vercel
  * pode estar executando em UTC.
  */
-function dentroDoHorarioDeFuncionamento() {
-  const agora = new Date();
-
+function dentroDoHorarioDeFuncionamento(horarios) {
   const partes = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(agora);
+  }).formatToParts(new Date());
+  const valor = (tipo) => partes.find((p) => p.type === tipo)?.value;
+  const mapa = {Monday:'segunda',Tuesday:'terca',Wednesday:'quarta',Thursday:'quinta',Friday:'sexta',Saturday:'sabado',Sunday:'domingo'};
+  const regra = horarios?.[mapa[valor('weekday')]];
+  if (!regra?.ativo) return false;
+  const paraMinutos = (v) => { const [h,m] = String(v||'').split(':').map(Number); return h*60+m; };
+  const agora = Number(valor('hour')) * 60 + Number(valor('minute'));
+  const abre = paraMinutos(regra.abre);
+  const fecha = paraMinutos(regra.fecha);
+  if (![agora,abre,fecha].every(Number.isFinite) || abre === fecha) return false;
+  return fecha > abre ? agora >= abre && agora < fecha : agora >= abre || agora < fecha;
+}
 
-  const valor = (tipo) =>
-    partes.find((parte) => parte.type === tipo)?.value;
-
-  const dia = valor('weekday');
-  const hora = Number(valor('hour'));
-  const minuto = Number(valor('minute'));
-
-  // Domingo fechado.
-  if (dia === 'Sunday') {
-    return false;
-  }
-
-  // Segunda a sabado: 11:00 ate 16:00.
-  const minutosAgora = hora * 60 + minuto;
-  const abertura = 11 * 60;
-  const fechamento = 16 * 60;
-
-  return minutosAgora >= abertura && minutosAgora < fechamento;
+async function usuarioAutenticado(request) {
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token) return null;
+  const verifier = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: { user } } = await verifier.auth.getUser(token);
+  return user || null;
 }
 
 export async function POST(request) {
@@ -123,6 +124,7 @@ if (!parsed.success) {
   
   const dados = parsed.data;
   const sb = supabaseAdmin();
+  const authUser = await usuarioAutenticado(request);
 
   // -------------------------------------------------------------------
 // IDEMPOTENCIA DO CHECKOUT
@@ -136,7 +138,7 @@ const {
   error: erroPedidoExistente,
 } = await sb
   .from('pedidos')
-  .select('id, codigo, subtotal, desconto, cupom_codigo, total, tipo, pagamento, status_pagamento, mp_order_id, mp_payment_id')
+  .select('id, auth_user_id, codigo, subtotal, desconto, cupom_codigo, total, tipo, pagamento, status_pagamento, mp_order_id, mp_payment_id')
   .eq('checkout_id', dados.checkout_id)
   .maybeSingle();
 
@@ -152,6 +154,63 @@ if (erroPedidoExistente) {
     },
     { status: 500 }
   );
+}
+
+if (pedidoExistente && pedidoExistente.pagamento !== dados.pagamento) {
+  return NextResponse.json({ erro: 'Este checkout já foi utilizado com outra forma de pagamento. Atualize a página para iniciar um novo pedido.' }, { status: 409 });
+}
+
+// Retomar um Pix interrompido sem criar outro pedido nem outra cobranca.
+// A chave idempotente do Mercado Pago e sempre pix-${pedido.id}.
+// So o dono autenticado pode retomar, e somente se nenhum ID de cobranca
+// tiver sido persistido. Se a primeira chamada estiver em andamento,
+// a mesma chave de idempotencia impede uma segunda cobranca distinta.
+if (pedidoExistente && dados.pagamento === 'pix' &&
+    !pedidoExistente.mp_order_id && !pedidoExistente.mp_payment_id &&
+    pedidoExistente.status_pagamento === 'pendente' &&
+    authUser?.id && pedidoExistente.auth_user_id === authUser.id) {
+  try {
+    const cobranca = await criarPagamentoPix({
+      valor: Number(pedidoExistente.total),
+      descricao: `Pedido ${pedidoExistente.codigo} - Jeito de Mae`,
+      pedidoId: pedidoExistente.id,
+      nome: dados.nome,
+    });
+    const { error: erroSalvar } = await sb.from('pedidos').update({
+      mp_order_id: cobranca.orderId,
+      mp_payment_id: cobranca.paymentId,
+    }).eq('id', pedidoExistente.id);
+    if (erroSalvar) {
+      console.error('[pedidos] salvar Pix retomado:', erroSalvar);
+      return NextResponse.json({ erro: 'Pix gerado, mas nao foi possivel confirmar o registro. Consulte Meus pedidos.', pedidoId: pedidoExistente.id }, { status: 502 });
+    }
+    return NextResponse.json({
+      ok: true,
+      duplicado: true,
+      pedido: {
+        id: pedidoExistente.id,
+        codigo: pedidoExistente.codigo,
+        subtotal: pedidoExistente.subtotal,
+        desconto: pedidoExistente.desconto,
+        cupom: pedidoExistente.cupom_codigo,
+        total: pedidoExistente.total,
+        tipo: pedidoExistente.tipo,
+      },
+      pix: {
+        qrCode: cobranca.qrCode,
+        qrCodeBase64: cobranca.qrCodeBase64,
+        ticketUrl: cobranca.ticketUrl || null,
+        expiraEm: cobranca.expiraEm,
+      },
+    });
+  } catch (erro) {
+    console.error('[pedidos] retomar Pix:', erro);
+    return NextResponse.json({ erro: 'Nao foi possivel recuperar o Pix. Consulte Meus pedidos ou tente novamente.', pedidoId: pedidoExistente.id }, { status: 502 });
+  }
+}
+
+if (pedidoExistente && dados.pagamento !== 'dinheiro') {
+  return NextResponse.json({ erro: 'Este pedido já foi registrado. Consulte Meus pedidos antes de tentar pagar novamente.', pedidoId: pedidoExistente.id }, { status: 409 });
 }
 
 if (
@@ -191,7 +250,7 @@ if (
     .eq('id', 1)
     .single();
 
-  const dentroDoHorario = dentroDoHorarioDeFuncionamento();
+  const dentroDoHorario = dentroDoHorarioDeFuncionamento(config?.horarios_semana);
 
   if (!config?.aberto || !dentroDoHorario) {
     return NextResponse.json(
@@ -263,7 +322,7 @@ if (
       ? produto.dias_semana
       : [];
 
-    if (!diasProduto.includes(diaAtual)) {
+    if (diasProduto.length > 0 && !diasProduto.includes(diaAtual)) {
       return NextResponse.json(
         {
           erro: `${produto.nome} nao esta disponivel no cardapio de hoje.`,
@@ -712,6 +771,19 @@ if (
 
 let pedido = null;
 let pedidoFoiCriadoAgora = false;
+let codigoEntrega = null;
+const acompanhamentoToken = randomBytes(24).toString('hex');
+const acompanhamentoTokenHash = createHash('sha256').update(acompanhamentoToken).digest('hex');
+const chaveEntrega = createHash('sha256').update(acompanhamentoToken).digest();
+const cifrarCodigoEntrega = (codigo) => {
+  if (!codigo) return null;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', chaveEntrega, iv);
+  const enc = Buffer.concat([cipher.update(codigo, 'utf8'), cipher.final()]);
+  return [iv.toString('hex'), cipher.getAuthTag().toString('hex'), enc.toString('hex')].join('.');
+};
+const exigeCodigoEntrega = dados.tipo === 'entrega' && config?.confirmacao_entrega === 'todas';
+if (exigeCodigoEntrega) codigoEntrega = String(randomInt(0, 1000000)).padStart(6, '0');
 
 const {
   data: pedidoCriado,
@@ -720,6 +792,8 @@ const {
   .from('pedidos')
   .insert({
     checkout_id: dados.checkout_id,
+
+    auth_user_id: authUser?.id || null,
 
     codigo: gerarCodigo(),
 
@@ -763,7 +837,27 @@ const {
 
     pagamento: dados.pagamento,
 
+    troco_para:
+      dados.pagamento === 'dinheiro' &&
+      dados.troco_para !== null &&
+      dados.troco_para !== undefined &&
+      String(dados.troco_para).trim() !== ''
+        ? (() => {
+            const bruto = String(dados.troco_para).trim().replace(/\s/g, '').replace(/^R\$/i, '');
+            const normalizado = bruto.includes(',')
+              ? bruto.replace(/\./g, '').replace(',', '.')
+              : bruto;
+            const valor = Number(normalizado);
+            return Number.isFinite(valor) && valor >= total ? Number(valor.toFixed(2)) : null;
+          })()
+        : null,
+
     status_pagamento: 'pendente',
+
+    entrega_codigo_necessario: exigeCodigoEntrega,
+    entrega_codigo_hash: codigoEntrega ? createHash('sha256').update(codigoEntrega).digest('hex') : null,
+    acompanhamento_token_hash: acompanhamentoTokenHash,
+    entrega_codigo_cliente_cifrado: cifrarCodigoEntrega(codigoEntrega),
 
     status: 'novo',
   })
@@ -823,9 +917,12 @@ if (!erroInsert) {
     });
   }
 
-  // Pix e cartao continuam abaixo utilizando o MESMO
-  // pedido.id. Assim a chave de idempotencia enviada
-  // ao Mercado Pago tambem continua sendo a mesma.
+  // Uma requisicao simultanea ja registrou este checkout.
+  // Nao inicie outra cobranca: o primeiro processamento pode estar em andamento.
+  return NextResponse.json({
+    erro: 'Este pedido ja foi registrado e o pagamento pode estar sendo processado. Consulte Meus pedidos antes de tentar novamente.',
+    pedidoId: pedido.id,
+  }, { status: 409 });
 } else {
   console.error(
     '[pedidos] insert:',
@@ -1128,6 +1225,7 @@ if (!erroInsert) {
   // ---------------------------------------------------------------
 
   if (pedidoFoiCriadoAgora) {
+  prepararCreditoFidelidade(sb,pedido).catch((erro)=>console.error('[pedidos] fidelidade:',erro));
   enviarPushNovoPedido(
     pedido
   ).catch((erro) => {
@@ -1161,6 +1259,9 @@ if (!erroInsert) {
 
       tipo:
         pedido.tipo,
+
+      codigo_entrega: codigoEntrega,
+      acompanhamento_token: acompanhamentoToken,
     },
 
     pix,

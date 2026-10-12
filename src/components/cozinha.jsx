@@ -140,6 +140,7 @@ function brl(valor) {
 
 export default function Cozinha({
   pedidosIniciais = [],
+  modo = 'cozinha',
 }) {
   const [pedidos, setPedidos] =
     useState(pedidosIniciais);
@@ -197,8 +198,24 @@ export default function Cozinha({
       10000
     );
 
-    return () =>
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') {
+        carregarPedidos();
+      }
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      aoVoltar
+    );
+
+    return () => {
       clearInterval(atualizacao);
+      document.removeEventListener(
+        'visibilitychange',
+        aoVoltar
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -228,12 +245,14 @@ export default function Cozinha({
       pedido.status_pagamento !== 'pago'
     ) {
       const recebeu = window.confirm(
-        'O pagamento em dinheiro foi recebido?\n\nOK = Sim, marcar como pago\nCancelar = Ainda não'
+        'O pagamento em dinheiro foi recebido?\n\nConfirme somente depois de receber o valor.'
       );
 
-      if (recebeu) {
-        patch.status_pagamento = 'pago';
+      if (!recebeu) {
+        return;
       }
+
+      patch.status_pagamento = 'pago';
     }
 
     setAlterando(pedido.id);
@@ -252,11 +271,15 @@ export default function Cozinha({
         }
       );
 
+      const dados = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error();
+        throw new Error(
+          dados.erro ||
+          'Não foi possível atualizar o pedido.'
+        );
       }
 
-      const dados = await res.json();
       const pedidoAtualizado =
         dados.pedido || {
           ...pedido,
@@ -282,8 +305,9 @@ export default function Cozinha({
           )
         );
       }
-    } catch {
+    } catch (e) {
       setErro(
+        e?.message ||
         'Não foi possível atualizar o pedido.'
       );
     } finally {
@@ -299,10 +323,10 @@ export default function Cozinha({
             JEITO DE MÃE
           </span>
 
-          <h1>Cozinha</h1>
+          <h1>{modo === 'atendimento' ? 'Atendimento' : 'Cozinha'}</h1>
 
           <p>
-            Pedidos em produção
+            {modo === 'atendimento' ? 'Pedidos e atendimento ao cliente' : 'Pedidos em produção'}
           </p>
         </div>
 
@@ -339,8 +363,11 @@ export default function Cozinha({
       ) : (
         <section className="cozinha-grid">
           {pedidos.map((pedido) => {
-            const proximo =
-              proximoStatus(pedido);
+            const pagamentoPendente =
+              pedido.pagamento !== 'dinheiro' &&
+              pedido.status_pagamento !== 'pago';
+
+            let proximo = pagamentoPendente ? null : proximoStatus(pedido);
 
             return (
               <article
@@ -377,6 +404,12 @@ export default function Cozinha({
                   ] || pedido.status}
                 </div>
 
+                {pagamentoPendente && (
+                  <div className="pedido-pagamento-pendente">
+                    Aguardando confirmação do pagamento
+                  </div>
+                )}
+
                 <div className="pedido-tipo">
                   {pedido.tipo ===
                   'retirada'
@@ -393,6 +426,13 @@ export default function Cozinha({
                     {pedido.cliente_telefone}
                   </span>
                 </div>
+
+                {pedido.pagamento === 'dinheiro' && (
+                  <div className="pedido-dinheiro">
+                    <span>Pagamento em dinheiro</span>
+                    <strong>{pedido.troco_para ? `Troco para ${brl(pedido.troco_para)}` : 'Sem troco informado'}</strong>
+                  </div>
+                )}
 
                 <div className="pedido-itens">
                   {(pedido.itens || []).map(
@@ -644,6 +684,16 @@ export default function Cozinha({
           color: #7b263d;
         }
 
+        .pedido-pagamento-pendente {
+          margin: 0 18px 12px;
+          padding: 9px 11px;
+          border-radius: 9px;
+          background: #fff4dd;
+          color: #7a5417;
+          font-size: 12px;
+          font-weight: 800;
+        }
+
         .pedido-tipo {
           margin: 0 18px 16px;
           display: inline-block;
@@ -668,6 +718,28 @@ export default function Cozinha({
         .pedido-cliente span {
           color: #786f70;
           font-size: 13px;
+        }
+
+        .pedido-dinheiro {
+          margin: 14px 18px 4px;
+          padding: 11px 13px;
+          border-radius: 10px;
+          background: #fff4dd;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .pedido-dinheiro span {
+          color: #7a5417;
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .pedido-dinheiro strong {
+          color: #5c3b0c;
+          font-size: 14px;
         }
 
         .pedido-itens {

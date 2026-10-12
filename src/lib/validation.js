@@ -115,6 +115,12 @@ export const pedidoSchema = z.object({
   cartao: cartaoSchema
     .optional(),
 
+  troco_para: z.union([
+    z.string().trim().max(30),
+    z.number().min(0).max(99999),
+    z.null(),
+  ]).optional().default(null),
+
 }).superRefine((d, ctx) => {
   /*
    * Entrega exige endereço.
@@ -142,6 +148,19 @@ export const pedidoSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: 'Informe os dados do cartao',
       path: ['cartao'],
+    });
+  }
+
+  /*
+   * Troco só faz sentido para pagamento em dinheiro.
+   * A comparação com o total real continua sendo feita no servidor,
+   * depois que produtos, adicionais, cupom e entrega são recalculados.
+   */
+  if (d.pagamento !== 'dinheiro' && d.troco_para !== null && String(d.troco_para).trim() !== '') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Troco enviado para uma forma de pagamento invalida',
+      path: ['troco_para'],
     });
   }
 
@@ -329,8 +348,28 @@ export const cupomSchema = z.object({
   }
 });
 
+const horarioDiaSchema = z.object({
+  ativo: z.boolean(),
+  abre: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  fecha: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+});
+
+const horariosSemanaSchema = z.object({
+  segunda: horarioDiaSchema,
+  terca: horarioDiaSchema,
+  quarta: horarioDiaSchema,
+  quinta: horarioDiaSchema,
+  sexta: horarioDiaSchema,
+  sabado: horarioDiaSchema,
+  domingo: horarioDiaSchema,
+});
+
 export const configSchema = z.object({
   aberto: z.boolean(),
+
+  horarios_semana: horariosSemanaSchema.optional(),
+
+  confirmacao_entrega: z.enum(['desativado','todas','sob_demanda']).optional().default('desativado'),
 
   prato_do_dia: z.string()
     .max(120)
@@ -398,6 +437,8 @@ export const statusPedidoSchema = z.object({
     'pago',
     'expirado',
   ]).optional(),
+
+  entrega_codigo_necessario: z.boolean().optional(),
 });
 
 export { soDigitos };

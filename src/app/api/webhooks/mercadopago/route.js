@@ -5,6 +5,7 @@ import {
   consultarPagamento,
 } from '@/lib/mercadopago';
 import { avisarPedidoNovo } from '@/lib/whatsapp';
+import { processarFidelidadePedido } from '@/lib/fidelidadePedido';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -184,6 +185,38 @@ export async function POST(request) {
       : null;
 
   // ---------------------------------------------------------------
+  // Confere o valor confirmado diretamente na Order do Mercado Pago.
+  // Nunca marcamos o pedido como pago se o valor divergir do total
+  // calculado e gravado pelo servidor da loja.
+  // ---------------------------------------------------------------
+
+  const valorMercadoPago = Number(pagamento.amount);
+  const valorPedido = Number(pedido.total);
+
+  if (
+    pagamento.status === 'approved' &&
+    (
+      !Number.isFinite(valorMercadoPago) ||
+      !Number.isFinite(valorPedido) ||
+      Math.abs(valorMercadoPago - valorPedido) > 0.009
+    )
+  ) {
+    console.error(
+      '[webhook] valor divergente:',
+      {
+        pedidoId,
+        valorPedido,
+        valorMercadoPago,
+      }
+    );
+
+    return NextResponse.json(
+      { ok: false },
+      { status: 409 }
+    );
+  }
+
+  // ---------------------------------------------------------------
   // PAGAMENTO APROVADO
   //
   // consultarPagamento() converte "processed"
@@ -233,9 +266,27 @@ export async function POST(request) {
       //
       // Nao alteramos para "preparo" automaticamente.
 
+      const pedidoPago = atualizado || {
+        ...pedido,
+        status_pagamento: 'pago',
+      };
+
       avisarPedidoNovo(
-        atualizado || pedido
+        pedidoPago
       ).catch(() => {});
+
+      // Se o pedido ja tiver sido concluido quando a confirmacao
+      // do pagamento chegar, libera os pontos neste momento.
+      // A operacao e idempotente no banco.
+      processarFidelidadePedido(
+        sb,
+        pedidoPago
+      ).catch((erro) => {
+        console.error(
+          '[webhook] fidelidade:',
+          erro
+        );
+      });
     } else {
       // Mesmo se o pedido ja estiver pago,
       // mantemos os IDs do Mercado Pago sincronizados.
@@ -273,6 +324,14 @@ export async function POST(request) {
       'rejected',
     ].includes(pagamento.status)
   ) {
+    // Um evento tardio de cancelamento/expiracao nao pode
+    // rebaixar um pagamento que ja foi confirmado como pago.
+    if (pedido.status_pagamento === 'pago') {
+      return NextResponse.json({
+        ok: true,
+      });
+    }
+
     const atualizacao = {
       status_pagamento:
         'expirado',

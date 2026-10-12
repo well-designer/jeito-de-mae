@@ -1,0 +1,9 @@
+'use client';
+import { useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+export default function LoyaltyEmailAuth({onValidated}){
+ const [email,setEmail]=useState(''),[codigo,setCodigo]=useState(''),[etapa,setEtapa]=useState('email'),[busy,setBusy]=useState(false),[erro,setErro]=useState('');
+ async function enviar(){setBusy(true);setErro('');const {error}=await supabaseBrowser().auth.signInWithOtp({email,options:{shouldCreateUser:true}});setBusy(false);if(error){setErro('Não foi possível enviar o código. Tente novamente.');return}setEtapa('codigo')}
+ async function validar(){setBusy(true);setErro('');const {data,error}=await supabaseBrowser().auth.verifyOtp({email,token:codigo,type:'email'});setBusy(false);if(error||!data.session){setErro('Código inválido ou expirado.');return}setEtapa('ok');onValidated?.(data.session)}
+ return <div className="loyalty-email-auth">{etapa==='email'&&<><h3>Valide sua fidelidade</h3><p>Informe seu e-mail para proteger seus pontos e recompensas.</p><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seuemail@exemplo.com"/><button onClick={enviar} disabled={busy||!email.includes('@')}>{busy?'Enviando...':'Enviar código'}</button></>}{etapa==='codigo'&&<><h3>Enviamos um código para seu e-mail</h3><p>Acesse <b>{email}</b> e digite o código de 6 dígitos para validar sua fidelidade.</p><input value={codigo} onChange={e=>setCodigo(e.target.value.replace(/\D/g,'').slice(0,6))} inputMode="numeric" placeholder="000000"/><button onClick={validar} disabled={busy||codigo.length!==6}>{busy?'Validando...':'Validar fidelidade'}</button><button className="link" onClick={()=>setEtapa('email')}>Usar outro e-mail</button></>}{etapa==='ok'&&<><h3>Fidelidade validada ✓</h3><p>Seus pontos e recompensas estão protegidos nesta conta.</p></>}{erro&&<small className="err">{erro}</small>}</div>;
+}

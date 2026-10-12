@@ -6,7 +6,6 @@ import Admin from '@/components/Admin';
 export const dynamic = 'force-dynamic';
 
 export default async function PainelPage() {
-  // Segunda barreira (o middleware ja e a primeira).
   const user = await exigirAdmin();
   if (!user) redirect('/login');
 
