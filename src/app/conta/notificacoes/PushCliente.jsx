@@ -4,9 +4,35 @@ import {supabaseBrowser} from '@/lib/supabaseBrowser';
 
 function bytes(base64){const s=atob((base64+'='.repeat((4-base64.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 export default function PushCliente(){
- const [status,setStatus]=useState(''),[busy,setBusy]=useState(false);
+ const [status,setStatus]=useState(''),[busy,setBusy]=useState(false),[inscricoes,setInscricoes]=useState(null),[endpointAtual,setEndpointAtual]=useState('');
  const suportado=typeof window!=='undefined'&&'serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;
  async function sessao(){const {data:{session}}=await supabaseBrowser().auth.getSession();if(!session)throw Error('Entre na sua conta antes de continuar.');return session}
+ async function listar(){
+  setBusy(true);setStatus('');
+  try{
+   const session=await sessao();
+   const reg=await navigator.serviceWorker.getRegistration('/sw.js');
+   const sub=await reg?.pushManager.getSubscription();
+   const endpoint=sub?.endpoint||'';
+   const r=await fetch('/api/conta/push?endpoint='+encodeURIComponent(endpoint),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
+   const d=await r.json();if(!r.ok)throw Error(d.erro||'Falha ao consultar inscrições.');
+   setEndpointAtual(endpoint);setInscricoes(d.inscricoes||[]);
+  }catch(e){setStatus(e.message||'Consulta indisponível.')}finally{setBusy(false)}
+ }
+ async function removerAntigo(id){
+  if(!endpointAtual||busy)return;
+  if(!window.confirm('Remover esta inscrição antiga? A inscrição atual do seu aparelho será preservada.'))return;
+  setBusy(true);setStatus('');
+  try{
+   const session=await sessao();
+   const reg=await navigator.serviceWorker.getRegistration('/sw.js');
+   const sub=await reg?.pushManager.getSubscription();
+   if(sub?.endpoint!==endpointAtual)throw Error('A inscrição atual mudou. Consulte os aparelhos novamente.');
+   const r=await fetch('/api/conta/push',{method:'PATCH',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({id,endpoint_atual:endpointAtual})});
+   const d=await r.json();if(!r.ok)throw Error(d.erro||'Não foi possível remover.');
+   setInscricoes(a=>a.filter(x=>x.id!==id));setStatus('Inscrição antiga removida. O aparelho atual foi preservado.');
+  }catch(e){setStatus(e.message)}finally{setBusy(false)}
+ }
  async function ativar(){
   setBusy(true);setStatus('');
   try{
@@ -61,6 +87,7 @@ export default function PushCliente(){
  <button type="button" disabled={busy||!suportado} onClick={testar} style={{padding:10}}>Enviar notificação de teste</button>
  <button type="button" disabled={busy||!suportado} onClick={desativar} style={{padding:10}}>Remover este aparelho</button>
  </div>
+ <div style={{marginTop:12}}><button type="button" disabled={busy||!suportado} onClick={listar}>Ver aparelhos cadastrados</button>{inscricoes&&<div style={{marginTop:10}}><strong>{inscricoes.length} inscrição(ões) nesta conta</strong>{!endpointAtual&&<p>Este navegador não possui inscrição ativa. Abra o aplicativo instalado para identificar o aparelho atual.</p>}{inscricoes.map((item,i)=><div key={item.id} style={{padding:'10px 0',borderBottom:'1px solid #e5ded4'}}><span>Inscrição {i+1} · {new Date(item.criado_em).toLocaleDateString('pt-BR')} · {item.atual?'Este aplicativo':'Outra inscrição'}</span>{!item.atual&&endpointAtual&&<button type="button" disabled={busy} onClick={()=>removerAntigo(item.id)} style={{marginLeft:8}}>Remover inscrição antiga</button>}</div>)}</div>}</div>
  <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
  {status&&<p role="status">{status}</p>}
  </section>;
