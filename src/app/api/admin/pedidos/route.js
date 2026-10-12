@@ -186,8 +186,9 @@ export async function PATCH(request) {
     .from('pedidos')
     .update(patch)
     .eq('id', id)
+    .eq('status', atual.status)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -200,6 +201,8 @@ export async function PATCH(request) {
       { status: 500 }
     );
   }
+
+  if (!data) return NextResponse.json({ erro: 'Este pedido foi alterado por outro operador. Atualize a lista antes de continuar.' }, { status: 409 });
 
   await processarFidelidadePedido(supabaseAdmin(), data).catch((erro) => {
     console.error('[fidelidade] processar pedido:', erro);
