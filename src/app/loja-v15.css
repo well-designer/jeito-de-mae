@@ -249,3 +249,8 @@ body{background:var(--jm-bg)!important;color:var(--jm-text)!important;padding-bo
 .jm-new-profile__points{background:#fff7f3!important;border:1px solid #ead7d1!important;color:var(--jm-wine-dark)!important}
 .jm-new-profile__points strong,.jm-new-profile__points b,.jm-new-profile__icon{color:var(--jm-wine)!important}
 .jm-new-profile__list a:focus-visible,.customer-address:focus-visible{outline:3px solid var(--jm-wine)!important;outline-offset:2px}
+
+/* Identidade visual: marca no lugar de ornamentos genéricos */
+.app-welcome-dot{overflow:hidden;background:#fff;padding:0;border:1px solid #f0e5df}
+.app-welcome-dot img{width:100%;height:100%;object-fit:contain;display:block}
+.home-benefits .benefit-icon img{width:30px;height:30px;object-fit:contain;display:block}
