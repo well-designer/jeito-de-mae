@@ -138,7 +138,7 @@ const {
   error: erroPedidoExistente,
 } = await sb
   .from('pedidos')
-  .select('id, codigo, subtotal, desconto, cupom_codigo, total, tipo, pagamento, status_pagamento, mp_order_id, mp_payment_id')
+  .select('id, auth_user_id, codigo, subtotal, desconto, cupom_codigo, total, tipo, pagamento, status_pagamento, mp_order_id, mp_payment_id')
   .eq('checkout_id', dados.checkout_id)
   .maybeSingle();
 
@@ -158,6 +158,55 @@ if (erroPedidoExistente) {
 
 if (pedidoExistente && pedidoExistente.pagamento !== dados.pagamento) {
   return NextResponse.json({ erro: 'Este checkout já foi utilizado com outra forma de pagamento. Atualize a página para iniciar um novo pedido.' }, { status: 409 });
+}
+
+// Retomar um Pix interrompido sem criar outro pedido nem outra cobranca.
+// A chave idempotente do Mercado Pago e sempre pix-${pedido.id}.
+// So o dono autenticado pode retomar, e somente se nenhum ID de cobranca
+// tiver sido persistido. Se a primeira chamada estiver em andamento,
+// a mesma chave de idempotencia impede uma segunda cobranca distinta.
+if (pedidoExistente && dados.pagamento === 'pix' &&
+    !pedidoExistente.mp_order_id && !pedidoExistente.mp_payment_id &&
+    pedidoExistente.status_pagamento === 'pendente' &&
+    authUser?.id && pedidoExistente.auth_user_id === authUser.id) {
+  try {
+    const cobranca = await criarPagamentoPix({
+      valor: Number(pedidoExistente.total),
+      descricao: `Pedido ${pedidoExistente.codigo} - Jeito de Mae`,
+      pedidoId: pedidoExistente.id,
+      nome: dados.nome,
+    });
+    const { error: erroSalvar } = await sb.from('pedidos').update({
+      mp_order_id: cobranca.orderId,
+      mp_payment_id: cobranca.paymentId,
+    }).eq('id', pedidoExistente.id);
+    if (erroSalvar) {
+      console.error('[pedidos] salvar Pix retomado:', erroSalvar);
+      return NextResponse.json({ erro: 'Pix gerado, mas nao foi possivel confirmar o registro. Consulte Meus pedidos.', pedidoId: pedidoExistente.id }, { status: 502 });
+    }
+    return NextResponse.json({
+      ok: true,
+      duplicado: true,
+      pedido: {
+        id: pedidoExistente.id,
+        codigo: pedidoExistente.codigo,
+        subtotal: pedidoExistente.subtotal,
+        desconto: pedidoExistente.desconto,
+        cupom: pedidoExistente.cupom_codigo,
+        total: pedidoExistente.total,
+        tipo: pedidoExistente.tipo,
+      },
+      pix: {
+        qrCode: cobranca.qrCode,
+        qrCodeBase64: cobranca.qrCodeBase64,
+        ticketUrl: cobranca.ticketUrl || null,
+        expiraEm: cobranca.expiraEm,
+      },
+    });
+  } catch (erro) {
+    console.error('[pedidos] retomar Pix:', erro);
+    return NextResponse.json({ erro: 'Nao foi possivel recuperar o Pix. Consulte Meus pedidos ou tente novamente.', pedidoId: pedidoExistente.id }, { status: 502 });
+  }
 }
 
 if (pedidoExistente && dados.pagamento !== 'dinheiro') {
