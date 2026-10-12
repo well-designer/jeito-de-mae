@@ -27,6 +27,19 @@ export default function PushCliente(){
    setStatus('Aparelho cadastrado. O envio de campanhas push ainda está desativado.');
   }catch(e){setStatus(e.message||'Não foi possível cadastrar.')}finally{setBusy(false)}
  }
+ async function testar(){
+  setBusy(true);setStatus('');
+  try{
+   const session=await sessao();
+   const reg=await navigator.serviceWorker.getRegistration('/sw.js');
+   const sub=await reg?.pushManager.getSubscription();
+   if(!sub)throw Error('Cadastre este aparelho antes de enviar o teste.');
+   const r=await fetch('/api/conta/push/teste',{method:'POST',headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})});
+   const d=await r.json();
+   if(!r.ok)throw Error(d.erro||'Não foi possível enviar o teste.');
+   setStatus('Teste enviado ao serviço de notificações. Verifique se o aviso apareceu no celular.');
+  }catch(e){setStatus(e.message||'Não foi possível testar.')}finally{setBusy(false)}
+ }
  async function desativar(){
   setBusy(true);setStatus('');
   try{
@@ -45,6 +58,7 @@ export default function PushCliente(){
  <p style={{fontSize:14}}>Cadastre este aparelho para preparar as notificações do aplicativo. Isso não autoriza ofertas e nenhum disparo promocional está ativo.</p>
  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
  <button type="button" disabled={busy||!suportado} onClick={ativar} style={{padding:10}}>{busy?'Aguarde…':'Cadastrar aparelho'}</button>
+ <button type="button" disabled={busy||!suportado} onClick={testar} style={{padding:10}}>Enviar notificação de teste</button>
  <button type="button" disabled={busy||!suportado} onClick={desativar} style={{padding:10}}>Remover este aparelho</button>
  </div>
  <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
