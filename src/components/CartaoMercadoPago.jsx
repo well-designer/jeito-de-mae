@@ -105,6 +105,7 @@ export default function CartaoMercadoPago({
   const controllerRef = useRef(null);
   const onPagarRef = useRef(onPagar);
   const onErroRef = useRef(onErro);
+  const desabilitadoRef = useRef(desabilitado);
 
   const [carregando, setCarregando] = useState(true);
   const [erroLocal, setErroLocal] = useState('');
@@ -116,6 +117,10 @@ export default function CartaoMercadoPago({
   useEffect(() => {
     onErroRef.current = onErro;
   }, [onErro]);
+
+  useEffect(() => {
+    desabilitadoRef.current = desabilitado;
+  }, [desabilitado]);
 
   useEffect(() => {
     let ativo = true;
@@ -179,7 +184,7 @@ export default function CartaoMercadoPago({
                 additionalData
               ) => {
                 try {
-                  if (desabilitado) {
+                  if (desabilitadoRef.current) {
                     throw new Error(
                       'Aguarde o processamento do pedido.'
                     );
