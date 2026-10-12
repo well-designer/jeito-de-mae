@@ -32,7 +32,7 @@ export async function GET(request) {
   try {
     const { data, error } = await supabaseAdmin()
       .from('pedidos')
-.select('codigo, status, status_pagamento, auth_user_id, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash, entrega_codigo_cliente_cifrado')
+.select('codigo, status, status_pagamento, tipo, total, criado_em, auth_user_id, entrega_codigo_necessario, entrega_codigo_hash, acompanhamento_token_hash, entrega_codigo_cliente_cifrado')
       .eq('id', id)
       .maybeSingle();
 
@@ -90,7 +90,7 @@ export async function GET(request) {
         }
       }
     }
-    const resposta = { codigo: data.codigo, status: data.status, status_pagamento: data.status_pagamento, entrega_codigo_necessario: data.entrega_codigo_necessario, codigo_entrega };
+    const resposta = { codigo: data.codigo, status: data.status, status_pagamento: data.status_pagamento, tipo: data.tipo, total: data.total, criado_em: data.criado_em, entrega_codigo_necessario: data.entrega_codigo_necessario, codigo_entrega };
     return NextResponse.json(resposta, {
       status: 200,
       headers: {
