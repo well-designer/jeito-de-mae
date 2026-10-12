@@ -11,8 +11,8 @@ export default function PushCliente(){
   setBusy(true);setStatus('');
   try{
    const session=await sessao();
-   const reg=await navigator.serviceWorker.getRegistration('/sw.js');
-   const sub=await reg?.pushManager.getSubscription();
+   const reg=typeof navigator!=='undefined'&&'serviceWorker'in navigator?await navigator.serviceWorker.getRegistration('/sw.js'):null;
+   const sub=reg?.pushManager?await reg.pushManager.getSubscription():null;
    const endpoint=sub?.endpoint||'';
    const r=await fetch('/api/conta/push?endpoint='+encodeURIComponent(endpoint),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});
    const d=await r.json();if(!r.ok)throw Error(d.erro||'Falha ao consultar inscrições.');
@@ -87,7 +87,7 @@ export default function PushCliente(){
  <button type="button" disabled={busy||!suportado} onClick={testar} style={{padding:10}}>Enviar notificação de teste</button>
  <button type="button" disabled={busy||!suportado} onClick={desativar} style={{padding:10}}>Remover este aparelho</button>
  </div>
- <div style={{marginTop:12}}><button type="button" disabled={busy||!suportado} onClick={listar}>Ver aparelhos cadastrados</button>{inscricoes&&<div style={{marginTop:10}}><strong>{inscricoes.length} inscrição(ões) nesta conta</strong>{!endpointAtual&&<p>Este navegador não possui inscrição ativa. Abra o aplicativo instalado para identificar o aparelho atual.</p>}{inscricoes.map((item,i)=><div key={item.id} style={{padding:'10px 0',borderBottom:'1px solid #e5ded4'}}><span>Inscrição {i+1} · {new Date(item.criado_em).toLocaleDateString('pt-BR')} · {item.atual?'Este aplicativo':'Outra inscrição'}</span>{!item.atual&&endpointAtual&&<button type="button" disabled={busy} onClick={()=>removerAntigo(item.id)} style={{marginLeft:8}}>Remover inscrição antiga</button>}</div>)}</div>}</div>
+ <div style={{marginTop:12}}><button type="button" disabled={busy} onClick={listar}>Ver aparelhos cadastrados</button>{inscricoes&&<div style={{marginTop:10}}><strong>{inscricoes.length} inscrição(ões) nesta conta</strong>{!endpointAtual&&<p>Este navegador não possui inscrição ativa. Abra o aplicativo instalado para identificar o aparelho atual.</p>}{inscricoes.map((item,i)=><div key={item.id} style={{padding:'10px 0',borderBottom:'1px solid #e5ded4'}}><span>Inscrição {i+1} · {new Date(item.criado_em).toLocaleDateString('pt-BR')} · {item.atual?'Este aplicativo':'Outra inscrição'}</span>{!item.atual&&endpointAtual&&<button type="button" disabled={busy} onClick={()=>removerAntigo(item.id)} style={{marginLeft:8}}>Remover inscrição antiga</button>}</div>)}</div>}</div>
  <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
  {status&&<p role="status">{status}</p>}
  </section>;
