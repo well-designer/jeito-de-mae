@@ -156,6 +156,14 @@ if (erroPedidoExistente) {
   );
 }
 
+if (pedidoExistente && pedidoExistente.pagamento !== dados.pagamento) {
+  return NextResponse.json({ erro: 'Este checkout já foi utilizado com outra forma de pagamento. Atualize a página para iniciar um novo pedido.' }, { status: 409 });
+}
+
+if (pedidoExistente && dados.pagamento !== 'dinheiro') {
+  return NextResponse.json({ erro: 'Este pedido já foi registrado. Consulte Meus pedidos antes de tentar pagar novamente.', pedidoId: pedidoExistente.id }, { status: 409 });
+}
+
 if (
   pedidoExistente &&
   dados.pagamento === 'dinheiro'
