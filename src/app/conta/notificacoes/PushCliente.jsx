@@ -1,7 +1,7 @@
 'use client';
 import {useState} from 'react';
 import {supabaseBrowser} from '@/lib/supabaseBrowser';
-const publicKey=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY||'';
+
 function bytes(base64){const s=atob((base64+'='.repeat((4-base64.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 export default function PushCliente(){
  const [status,setStatus]=useState(''),[busy,setBusy]=useState(false);
@@ -11,6 +11,9 @@ export default function PushCliente(){
   setBusy(true);setStatus('');
   try{
    if(!suportado)throw Error('Este navegador não oferece notificações push.');
+   const chaveResposta=await fetch('/api/conta/push/chave-publica',{cache:'no-store'});
+   if(!chaveResposta.ok)throw Error('A chave pública de notificações está indisponível.');
+   const {publicKey}=await chaveResposta.json();
    if(!publicKey)throw Error('A chave pública de notificações ainda não foi configurada.');
    await sessao();
    const permissao=await Notification.requestPermission();
@@ -41,10 +44,9 @@ export default function PushCliente(){
  <h2 style={{fontSize:18,margin:'0 0 8px'}}>Notificações no celular</h2>
  <p style={{fontSize:14}}>Cadastre este aparelho para preparar as notificações do aplicativo. Isso não autoriza ofertas e nenhum disparo promocional está ativo.</p>
  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
- <button type="button" disabled={busy||!suportado||!publicKey} onClick={ativar} style={{padding:10}}>{busy?'Aguarde…':'Cadastrar aparelho'}</button>
+ <button type="button" disabled={busy||!suportado} onClick={ativar} style={{padding:10}}>{busy?'Aguarde…':'Cadastrar aparelho'}</button>
  <button type="button" disabled={busy||!suportado} onClick={desativar} style={{padding:10}}>Remover este aparelho</button>
  </div>
- {!publicKey&&<p style={{fontSize:13}}>Aguardando configuração da chave pública VAPID.</p>}
  <p style={{fontSize:13}}>No iPhone, abra o site pelo Safari, escolha Compartilhar → Adicionar à Tela de Início e abra o aplicativo pelo ícone criado. Depois permita notificações quando solicitado.</p>
  {status&&<p role="status">{status}</p>}
  </section>;
