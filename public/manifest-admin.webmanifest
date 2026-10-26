@@ -1,0 +1,17 @@
+{
+  "id": "/jm-admin",
+  "name": "JM Admin",
+  "short_name": "JM Admin",
+  "description": "Painel administrativo Jeito de Mãe.",
+  "start_url": "/jm-admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#6f1830",
+  "theme_color": "#6f1830",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "icons": [
+    {"src":"/jeito%20de%20m%C3%A3e_app.png","sizes":"579x579","type":"image/png","purpose":"any"},
+    {"src":"/jeito%20de%20m%C3%A3e_app.png","sizes":"579x579","type":"image/png","purpose":"maskable"}
+  ]
+}
