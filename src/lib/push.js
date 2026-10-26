@@ -177,7 +177,7 @@ export async function enviarPushTeste() {
       body:
         'As notificações de novos pedidos estão funcionando!',
 
-      url: '/admin',
+      url: '/admin#pedidos',
 
       tag: `teste-${Date.now()}`,
     });
