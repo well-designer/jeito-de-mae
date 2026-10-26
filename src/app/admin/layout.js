@@ -3,6 +3,14 @@ import { exigirPapel } from '@/lib/supabaseServer';
 import AdminHashBridge from '@/components/AdminHashBridge';
 import './admin-v15.css';
 
+export const metadata = {
+  title: 'JM Admin',
+  description: 'Painel administrativo Jeito de Mãe',
+  manifest: '/manifest-admin.webmanifest',
+  robots: { index: false, follow: false },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'JM Admin' },
+};
+
 export default async function AdminLayout({ children }) {
   const user = await exigirPapel(['admin','proprietario','atendente','cozinha']);
   const papel = user?.papel;
