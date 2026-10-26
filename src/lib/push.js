@@ -98,7 +98,7 @@ export async function enviarPushNovoPedido(pedido) {
         `${tipo} • ${cliente}\n` +
         `💰 ${valor} • ${pagamento}`,
 
-      url: '/admin',
+      url: '/admin#pedidos',
 
       tag: `pedido-${pedido.id}`,
 
