@@ -65,12 +65,7 @@ self.addEventListener(
                 url.origin ===
                 self.location.origin
               ) {
-                if (
-                  'navigate' in janela &&
-                  !url.pathname.startsWith(
-                    '/admin'
-                  )
-                ) {
+                if ('navigate' in janela) {
                   return janela
                     .navigate(destino)
                     .then(() =>
